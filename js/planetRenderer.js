@@ -56,11 +56,57 @@ export function updatePlanetAppearance(config) {
 
 function createPlanet(config) {
     if (planetMesh) scene.remove(planetMesh);
+
     const planetRadius = ecosystemSizes[config.ecosystemSize].radius;
     const geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
-    const material = new THREE.MeshPhongMaterial({ color: 0x16a34a }); // Simplificado por agora
+
+    // Base color on planet type
+    let color = 0x16a34a; // Default terrestrial
+    switch (config.planetType) {
+        case 'desert':
+            color = 0xD2B48C; // Tan
+            break;
+        case 'aquatic':
+            color = 0x1E90FF; // DodgerBlue
+            break;
+        case 'volcanic':
+            color = 0x8B0000; // DarkRed
+            break;
+        case 'gas':
+            color = 0xFFD700; // Gold
+            break;
+    }
+
+    const material = new THREE.MeshPhongMaterial({ color });
     planetMesh = new THREE.Mesh(geometry, material);
     scene.add(planetMesh);
+
+    // Atmosphere
+    const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
+    let atmosphereColor = 0xFFFFFF;
+    let atmosphereOpacity = 0.3;
+
+    switch (config.atmosphere) {
+        case 'methane':
+            atmosphereColor = 0xFF4500; // OrangeRed
+            atmosphereOpacity = 0.4;
+            break;
+        case 'thin':
+            atmosphereOpacity = 0.1;
+            break;
+        case 'dense':
+            atmosphereOpacity = 0.6;
+            break;
+    }
+
+    const atmosphereMaterial = new THREE.MeshBasicMaterial({
+        color: atmosphereColor,
+        transparent: true,
+        opacity: atmosphereOpacity,
+        side: THREE.BackSide
+    });
+    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+    planetMesh.add(atmosphere); // Add atmosphere as a child of the planet
 
     camera.position.z = planetRadius * 2;
     controls.minDistance = planetRadius + 10;
