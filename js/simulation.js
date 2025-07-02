@@ -97,6 +97,13 @@ export function pauseSimulationLoop() {
 }
 
 export function addElementAtPoint(point3D, type, multiplier, useGemini, geminiApiKey) {
+    // Prevent placing sun on the planet surface
+    if (type === 'sun') {
+        logToObserver("O Sol só pode ser colocado no espaço sideral.");
+        showMessage("O Sol só pode ser colocado no espaço sideral.");
+        return;
+    }
+
     const { x, y } = convert3DTo2DCoordinates(point3D, simulationConfig);
     const ElementClass = elementClasses[type];
     if (!ElementClass) return;

@@ -58,7 +58,7 @@ export const elementDefinitions = {
     water: { emoji: '💧', color: 'rgba(0, 191, 255, 0.7)', baseHealth: 100, size: 20, decayRate: 0.01 },
     rock: { emoji: '🪨', color: 'rgba(100, 100, 100, 0.9)', baseHealth: 100, size: 30, decayRate: 0 },
     plant: { emoji: '🌿', color: 'rgba(0, 200, 0, 0.9)', baseHealth: 100, energy: 50, size: 25, decayRate: 0.2, reproductionChance: 0.005 },
-    creature: { emoji: '🐛', color: 'rgba(255, 165, 0, 0.9)', baseHealth: 100, energy: 100, size: 18, decayRate: 0.3, reproductionChance: 0.002, speed: 2 },
+    creature: { emoji: '🐛', color: 'rgba(255, 165, 0, 0.9)', baseHealth: 100, energy: 100, size: 18, decayRate: 0.3, reproductionChance: 0.002, speed: 2, preferredBiome: 'terrestrial' },
     sun: { emoji: '☀️', color: 'rgba(255, 255, 0, 0.8)', baseHealth: 100, size: 30, decayRate: 0.05 },
     rain: { emoji: '🌧️', color: 'rgba(100, 149, 237, 0.6)', baseHealth: 100, size: 35, decayRate: 1.5 },
     fungus: { emoji: '🍄', color: 'rgba(150, 75, 0, 0.9)', baseHealth: 80, energy: 30, size: 22, decayRate: 0.15, reproductionChance: 0.003 },
@@ -124,7 +124,7 @@ class PlantElement extends EcosystemElement {
 }
 
 class CreatureElement extends EcosystemElement {
-    constructor(id, x, y) { super(id, x, y, 'creature'); }
+    constructor(id, x, y) { super(id, x, y, 'creature'); this.preferredBiome = elementDefinitions.creature.preferredBiome; }
     update(simulationState, config) {
         super.update(simulationState, config);
 
@@ -142,6 +142,16 @@ class CreatureElement extends EcosystemElement {
         }
         this.energy -= energyConsumption;
 
+        // Biome suitability
+        let biomeSuitability = 1.0;
+        if (this.preferredBiome === 'aquatic' && config.waterPresence < 50) {
+            biomeSuitability *= 0.5;
+        } else if (this.preferredBiome === 'desert' && config.waterPresence > 50) {
+            biomeSuitability *= 0.5;
+        } // Add more biome checks as needed
+
+        this.health *= biomeSuitability; // Health degrades if not in preferred biome
+
         if(this.energy <= 0) this.health -= 0.5;
 
         // Interaction with plants (food source)
@@ -153,19 +163,85 @@ class CreatureElement extends EcosystemElement {
         });
 
         // Reproduction influenced by health and environment
-        if (this.health > 70 && this.energy > 50 && Math.random() < this.reproductionChance / config.gravity) {
+        if (this.health > 70 && this.energy > 50 && Math.random() < this.reproductionChance / config.gravity * biomeSuitability) {
             simulationState.newElements.push(new CreatureElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
         }
     }
 }
 
+class WaterElement extends EcosystemElement {
+    constructor(id, x, y) { super(id, x, y, 'water'); this.amount = 100; this.lastSpreadTick = 0; }
+    update(simulationState, config) {
+        super.update(simulationState, config);
+
+        // Only spread every 10 ticks to reduce overhead
+        if (this.health > 0 && this.amount > 10 && simulationState.age - this.lastSpreadTick > 10) {
+            const spreadAmount = this.amount * 0.05; // Reduced spread amount
+            this.amount -= spreadAmount;
+            this.lastSpreadTick = simulationState.age;
+
+            const neighbors = [
+                { x: this.x + this.size, y: this.y },
+                { x: this.x - this.size, y: this.y },
+                { x: this.x, y: this.y + this.size },
+                { x: this.x, y: this.y - this.size },
+            ];
+
+            neighbors.forEach(n => {
+                let existingWater = simulationState.elements.find(el => el.type === 'water' && Math.hypot(el.x - n.x, el.y - n.y) < this.size * 2); // Larger search radius
+                if (existingWater) {
+                    existingWater.amount += spreadAmount / neighbors.length;
+                } else if (Math.random() < 0.2) { // Reduced chance to create new element
+                    simulationState.newElements.push(new WaterElement(Date.now() + Math.random(), n.x, n.y));
+                }
+            });
+        }
+        if (this.amount <= 0) this.health = 0; // No more water, element dies
+    }
+}
+
+class RockElement extends EcosystemElement {
+    constructor(id, x, y) { super(id, x, y, 'rock'); this.height = Math.random() * 50 + 10; } // Random height
+    update(simulationState, config) {
+        super.update(simulationState, config);
+        // Rocks are mostly static, but might erode over time
+        this.height -= 0.01 * config.waterPresence / 100; // Erosion by water
+        if (this.height < 5) this.health = 0; // Eroded away
+    }
+}
+
+class SunElement extends EcosystemElement {
+    constructor(id, x, y) { super(id, x, y, 'sun'); }
+    update(simulationState, config) {
+        super.update(simulationState, config);
+        // Sun provides luminosity, which is handled by the renderer
+        // No direct health impact on itself, but influences others
+    }
+}
+
+class RainElement extends EcosystemElement {
+    constructor(id, x, y) { super(id, x, y, 'rain'); this.duration = 100; } // Rain lasts for a duration
+    update(simulationState, config) {
+        super.update(simulationState, config);
+        this.duration--;
+        if (this.duration <= 0) this.health = 0; // Rain stops
+
+        // Increase water presence in the area
+        simulationState.elements.forEach(el => {
+            if (el.type === 'water' && Math.hypot(this.x - el.x, el.y - el.y) < 100) {
+                el.amount += 1; // Add water to existing water bodies
+            }
+        });
+    }
+}
+
 export const elementClasses = {
-    water: (id, x, y) => new EcosystemElement(id, x, y, 'water'),
-    rock: (id, x, y) => new EcosystemElement(id, x, y, 'rock'),
+    water: WaterElement,
+    rock: RockElement,
     plant: PlantElement,
     creature: CreatureElement,
-    sun: (id, x, y) => new EcosystemElement(id, x, y, 'sun'),
-    rain: (id, x, y) => new EcosystemElement(id, x, y, 'rain'),
+    sun: SunElement,
+    rain: RainElement,
     fungus: (id, x, y) => new EcosystemElement(id, x, y, 'fungus'),
     meteor: (id, x, y) => new EcosystemElement(id, x, y, 'meteor'),
     volcano: (id, x, y) => new EcosystemElement(id, x, y, 'volcano'),
