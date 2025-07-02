@@ -53,6 +53,11 @@ export function init3DScene(container, initialConfig) {
             rainParticles.geometry.attributes.position.needsUpdate = true;
         }
 
+        // Animate clouds
+        if (cloudMesh) {
+            cloudMesh.rotation.y += 0.0005;
+        }
+
         renderer.render(scene, camera);
     };
     animate();
@@ -322,6 +327,126 @@ function createMeshForElement(element) {
     return new THREE.Mesh(geometry, material);
 }
 
+let volcanoSmokeParticles = null;
+let meteorExplosionParticles = null;
+
+export function triggerVolcanoEruption(position) {
+    if (volcanoSmokeParticles) scene.remove(volcanoSmokeParticles);
+
+    const particleCount = 500;
+    const particles = new THREE.BufferGeometry();
+    const pArray = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+        pArray[i] = position.x + (Math.random() - 0.5) * 20;
+        pArray[i + 1] = position.y + (Math.random() - 0.5) * 20;
+        pArray[i + 2] = position.z + (Math.random() - 0.5) * 20;
+    }
+    particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
+
+    const pMaterial = new THREE.PointsMaterial({
+        color: 0x808080, // Grey smoke
+        size: 5,
+        transparent: true,
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+    });
+
+    volcanoSmokeParticles = new THREE.Points(particles, pMaterial);
+    scene.add(volcanoSmokeParticles);
+
+    // Animate smoke for a short duration
+    let opacity = 0.8;
+    const animateSmoke = () => {
+        if (volcanoSmokeParticles) {
+            opacity -= 0.02;
+            volcanoSmokeParticles.material.opacity = opacity;
+            volcanoSmokeParticles.scale.multiplyScalar(1.05);
+            if (opacity > 0) {
+                requestAnimationFrame(animateSmoke);
+            } else {
+                scene.remove(volcanoSmokeParticles);
+                volcanoSmokeParticles.geometry.dispose();
+                volcanoSmokeParticles.material.dispose();
+                volcanoSmokeParticles = null;
+            }
+        }
+    };
+    animateSmoke();
+}
+
+export function triggerMeteorImpact(position) {
+    if (meteorExplosionParticles) scene.remove(meteorExplosionParticles);
+
+    const particleCount = 1000;
+    const particles = new THREE.BufferGeometry();
+    const pArray = new Float32Array(particleCount * 3);
+
+    for (let i = 0; i < particleCount * 3; i += 3) {
+        pArray[i] = position.x + (Math.random() - 0.5) * 50;
+        pArray[i + 1] = position.y + (Math.random() - 0.5) * 50;
+        pArray[i + 2] = position.z + (Math.random() - 0.5) * 50;
+    }
+    particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
+
+    const pMaterial = new THREE.PointsMaterial({
+        color: 0xFF4500, // Orange-red explosion
+        size: 10,
+        transparent: true,
+        opacity: 1.0,
+        blending: THREE.AdditiveBlending
+    });
+
+    meteorExplosionParticles = new THREE.Points(particles, pMaterial);
+    scene.add(meteorExplosionParticles);
+
+    // Animate explosion for a short duration
+    let opacity = 1.0;
+    const animateExplosion = () => {
+        if (meteorExplosionParticles) {
+            opacity -= 0.05;
+            meteorExplosionParticles.material.opacity = opacity;
+            meteorExplosionParticles.scale.multiplyScalar(1.1);
+            if (opacity > 0) {
+                requestAnimationFrame(animateExplosion);
+            } else {
+                scene.remove(meteorExplosionParticles);
+                meteorExplosionParticles.geometry.dispose();
+                meteorExplosionParticles.material.dispose();
+                meteorExplosionParticles = null;
+            }
+        }
+    };
+    animateExplosion();
+    createCrater(position, 50); // Create a crater with radius 50 at the impact position
+}
+
+function createCrater(position, radius) {
+    if (!planetMesh) return;
+
+    const planetGeometry = planetMesh.geometry;
+    const positions = planetGeometry.attributes.position.array;
+    const planetRadius = planetMesh.geometry.parameters.radius;
+
+    const localImpactPos = planetMesh.worldToLocal(position.clone());
+
+    for (let i = 0; i < positions.length; i += 3) {
+        const vertex = new THREE.Vector3(positions[i], positions[i + 1], positions[i + 2]);
+        const distance = vertex.distanceTo(localImpactPos);
+
+        if (distance < radius) {
+            const depth = (1 - (distance / radius)) * 5; // Max depth of 5 units
+            vertex.normalize().multiplyScalar(planetRadius - depth);
+            positions[i] = vertex.x;
+            positions[i + 1] = vertex.y;
+            positions[i + 2] = vertex.z;
+        }
+    }
+    planetGeometry.attributes.position.needsUpdate = true;
+    planetGeometry.computeVertexNormals();
+    planetGeometry.normalsNeedUpdate = true;
+}
+
 export function updateElements3D(elements, config, currentMouse3DPoint, placingElement) {
     if (!planetMesh || !config) return;
     // Sincronizar elementos
@@ -347,6 +472,12 @@ export function updateElements3D(elements, config, currentMouse3DPoint, placingE
                 mesh.userData.id = el.id;
                 mesh.position.set(500, 500, 500);
                 scene.add(mesh);
+            } else if (el.type === 'meteor') {
+                mesh = createMeshForElement(el);
+                if (!mesh) return;
+                mesh.userData.id = el.id;
+                mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
+                elements3D.add(mesh);
             } else {
                 mesh = createMeshForElement(el);
                 if (!mesh) return;
@@ -361,8 +492,20 @@ export function updateElements3D(elements, config, currentMouse3DPoint, placingE
             }
         }
         const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
-        mesh.position.copy(pos);
-        mesh.lookAt(planetMesh.position);
+        if (el.type === 'meteor') {
+            mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
+        } else {
+            mesh.position.copy(pos);
+            mesh.lookAt(planetMesh.position);
+        }
+
+        // Visual feedback for element health
+        if (mesh.material.color) {
+            const healthFactor = el.health / 100; // Assuming max health is 100
+            const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
+            const deadColor = new THREE.Color(0x808080); // Grey
+            mesh.material.color.lerpColors(deadColor, baseColor, healthFactor);
+        }
         meshesToKeep.push(mesh);
     });
 
@@ -378,46 +521,43 @@ export function updateElements3D(elements, config, currentMouse3DPoint, placingE
     // Handle water as a single mesh
     const waterElements = elements.filter(el => el.type === 'water');
     if (waterElements.length > 0) {
-        const waterGeometry = new THREE.BufferGeometry();
-        const positions = [];
-        const waterLevel = ecosystemSizes[config.ecosystemSize].radius + 0.5; // Slightly above planet surface
+        // Remove existing water meshes from elements3D if any
+        elements3D.children.slice().forEach(child => {
+            if (child.userData.type === 'water') {
+                elements3D.remove(child);
+                child.geometry.dispose();
+                child.material.dispose();
+            }
+        });
+
+        const waterMaterial = new THREE.MeshPhongMaterial({
+            color: 0x1E90FF, // DodgerBlue
+            transparent: true,
+            opacity: 0.7,
+            side: THREE.DoubleSide
+        });
 
         waterElements.forEach(el => {
             const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
-            // Create a flat quad for each water element
-            const halfSize = el.size * Math.min(1, el.amount / 100) * 0.5;
-            positions.push(
-                pos.x - halfSize, pos.y, pos.z - halfSize,
-                pos.x + halfSize, pos.y, pos.z - halfSize,
-                pos.x - halfSize, pos.y, pos.z + halfSize,
-
-                pos.x + halfSize, pos.y, pos.z - halfSize,
-                pos.x + halfSize, pos.y, pos.z + halfSize,
-                pos.x - halfSize, pos.y, pos.z + halfSize,
-            );
+            const waterSize = el.size * Math.min(1, el.amount / 100);
+            const waterGeometry = new THREE.PlaneGeometry(waterSize, waterSize);
+            const individualWaterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+            individualWaterMesh.position.copy(pos);
+            individualWaterMesh.lookAt(planetMesh.position); // Orient towards planet center
+            individualWaterMesh.userData.id = el.id; // Keep track of the element ID
+            individualWaterMesh.userData.type = 'water';
+            elements3D.add(individualWaterMesh);
         });
 
-        waterGeometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        waterGeometry.computeVertexNormals();
-
-        if (waterMesh) {
-            waterMesh.geometry.dispose();
-            waterMesh.geometry = waterGeometry;
-        } else {
-            const waterMaterial = new THREE.MeshPhongMaterial({
-                color: 0x1E90FF, // DodgerBlue
-                transparent: true,
-                opacity: 0.7,
-                side: THREE.DoubleSide
-            });
-            waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-            scene.add(waterMesh);
-        }
-    } else if (waterMesh) {
-        scene.remove(waterMesh);
-        waterMesh.geometry.dispose();
-        waterMesh.material.dispose();
-        waterMesh = null;
+    } else {
+        // Remove all water meshes if no water elements exist
+        elements3D.children.slice().forEach(child => {
+            if (child.userData.type === 'water') {
+                elements3D.remove(child);
+                child.geometry.dispose();
+                child.material.dispose();
+            }
+        });
     }
     rainParticles.visible = hasRain;
 

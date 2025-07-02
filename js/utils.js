@@ -1,3 +1,6 @@
+import { get3DPositionOnPlanet, triggerVolcanoEruption, triggerMeteorImpact } from './planetRenderer.js';
+import * as THREE from 'three';
+
 // js/utils.js
 let messageBox, messageText, observerLogDiv;
 
@@ -124,13 +127,36 @@ class PlantElement extends EcosystemElement {
 }
 
 class CreatureElement extends EcosystemElement {
-    constructor(id, x, y) { super(id, x, y, 'creature'); this.preferredBiome = elementDefinitions.creature.preferredBiome; }
+    constructor(id, x, y) { super(id, x, y, 'creature'); this.preferredBiome = elementDefinitions.creature.preferredBiome; this.target = null; }
     update(simulationState, config) {
         super.update(simulationState, config);
 
-        // Movement influenced by gravity
-        this.x += (Math.random() - 0.5) * this.speed / config.gravity;
-        this.y += (Math.random() - 0.5) * this.speed / config.gravity;
+        // Find nearest plant if no target or target is dead
+        if (!this.target || this.target.health <= 0) {
+            const plants = simulationState.elements.filter(el => el.type === 'plant' && el.health > 0);
+            if (plants.length > 0) {
+                this.target = plants.reduce((prev, curr) => {
+                    const distPrev = Math.hypot(this.x - prev.x, this.y - prev.y);
+                    const distCurr = Math.hypot(this.x - curr.x, this.y - curr.y);
+                    return (distPrev < distCurr) ? prev : curr;
+                });
+            } else {
+                this.target = null;
+            }
+        }
+
+        // Movement influenced by gravity and target
+        let moveX = (Math.random() - 0.5) * this.speed / config.gravity;
+        let moveY = (Math.random() - 0.5) * this.speed / config.gravity;
+
+        if (this.target) {
+            const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            moveX = Math.cos(angle) * this.speed / config.gravity;
+            moveY = Math.sin(angle) * this.speed / config.gravity;
+        }
+
+        this.x += moveX;
+        this.y += moveY;
 
         // Energy consumption influenced by temperature and water
         let energyConsumption = 0.1;
@@ -235,6 +261,83 @@ class RainElement extends EcosystemElement {
     }
 }
 
+class VolcanoElement extends EcosystemElement {
+    constructor(id, x, y) { super(id, x, y, 'volcano'); this.eruptionCooldown = 0; }
+    update(simulationState, config) {
+        super.update(simulationState, config);
+
+        if (this.eruptionCooldown > 0) {
+            this.eruptionCooldown--;
+        } else if (Math.random() < elementDefinitions.volcano.eruptionChance) {
+            // Trigger eruption
+            this.eruptionCooldown = 100; // Cooldown for 100 ticks
+            logToObserver(`Vulcão em ${this.x.toFixed(0)},${this.y.toFixed(0)} entrou em erupção!`);
+            const volcano3DPos = get3DPositionOnPlanet(this.x, this.y, simulationState.config, this.type);
+            triggerVolcanoEruption(volcano3DPos);
+
+            // Impact nearby elements
+            simulationState.elements.forEach(el => {
+                const distance = Math.hypot(this.x - el.x, this.y - el.y);
+                if (distance < 100) { // Area of effect
+                    el.health -= 50; // Damage
+                    if (el.health <= 0) {
+                        logToObserver(`${el.type} em ${el.x.toFixed(0)},${el.y.toFixed(0)} foi destruído pela erupção.`);
+                    }
+                }
+            });
+        }
+    }
+}
+
+class MeteorElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'meteor');
+        this.impacted = false;
+        // Define a random start position far above the planet
+        const startDistance = 500; // Fixed distance for now
+        const angle = Math.random() * Math.PI * 2;
+        const elevation = Math.random() * Math.PI / 4; // Some elevation
+        this.startPos = new THREE.Vector3(
+            startDistance * Math.cos(angle) * Math.cos(elevation),
+            startDistance * Math.sin(elevation),
+            startDistance * Math.sin(angle) * Math.cos(elevation)
+        );
+        this.targetPos = get3DPositionOnPlanet(x, y, { ecosystemSize: 'medium' }, 'meteor'); // Target on planet surface
+        this.progress = 0; // 0 to 1, 1 means impact
+    }
+
+    update(simulationState, config) {
+        super.update(simulationState, config);
+
+        if (!this.impacted) {
+            this.progress += 0.01; // Meteor moves towards the planet
+            if (this.progress >= 1) {
+                this.impacted = true;
+                logToObserver(`Meteoro impactou em ${this.x.toFixed(0)},${this.y.toFixed(0)}!`);
+                triggerMeteorImpact(this.targetPos);
+
+                // Impact nearby elements
+                simulationState.elements.forEach(el => {
+                    const distance = Math.hypot(this.x - el.x, this.y - el.y);
+                    if (distance < 150) { // Larger area of effect
+                        el.health -= 80; // More damage
+                        if (el.health <= 0) {
+                            logToObserver(`${el.type} em ${el.x.toFixed(0)},${el.y.toFixed(0)} foi destruído pelo impacto do meteoro.`);
+                        }
+                    }
+                });
+                this.health = 0; // Meteor is destroyed after impact
+            } else {
+                // Update current 3D position based on progress
+                const current3DPos = new THREE.Vector3().lerpVectors(this.startPos, this.targetPos, this.progress);
+                this.x = current3DPos.x; // Update x and y for 2D simulation logic
+                this.y = current3DPos.y;
+                this.z = current3DPos.z; // Store z for 3D rendering
+            }
+        }
+    }
+}
+
 export const elementClasses = {
     water: WaterElement,
     rock: RockElement,
@@ -243,7 +346,7 @@ export const elementClasses = {
     sun: SunElement,
     rain: RainElement,
     fungus: (id, x, y) => new EcosystemElement(id, x, y, 'fungus'),
-    meteor: (id, x, y) => new EcosystemElement(id, x, y, 'meteor'),
-    volcano: (id, x, y) => new EcosystemElement(id, x, y, 'volcano'),
+    meteor: MeteorElement,
+    volcano: VolcanoElement,
     eraser: (id, x, y) => new EcosystemElement(id, x, y, 'eraser'),
 };
