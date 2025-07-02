@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosse™ - Sandbox Planetário 3D</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🪐</text></svg>">
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.138.0/build/three.module.js",
+                "three/examples/jsm/controls/OrbitControls.js": "https://unpkg.com/three@0.138.0/examples/jsm/controls/OrbitControls.js"
+            }
+        }
+    </script>
+</head>
+<body class="selection:bg-indigo-700 selection:text-white">
+    <div id="app-container">
+        <div id="left-panel" class="panel">
+            <h3 class="text-xl font-semibold mb-3 text-gray-200 flex items-center justify-between">
+                Configurações
+                <button id="toggle-left-panel" class="panel-toggle-btn lg:hidden"><i class="fas fa-chevron-left"></i></button>
+            </h3>
+            <div class="flex-grow overflow-y-auto pr-2 custom-scrollbar">
+                <div class="mb-6">
+                    <label for="planet-type" class="block text-sm font-medium text-gray-400 mb-1">Tipo de Planeta:</label>
+                    <select id="planet-type" class="input-field">
+                        <option value="terrestrial">Terrestre</option>
+                        <option value="desert">Desértico</option>
+                        <option value="aquatic">Aquático</option>
+                        <option value="volcanic">Vulcânico</option>
+                        <option value="gas">Gasoso</option>
+                    </select>
+                </div>
+                <div class="slider-group">
+                    <label for="gravity">Gravidade:</label>
+                    <input type="range" id="gravity" min="0.5" max="1.5" step="0.1" value="1.0">
+                    <span class="text-sm text-gray-400">Valor: <span id="gravity-value">1.0x</span></span>
+                </div>
+                <div class="slider-group">
+                    <label for="atmosphere">Atmosfera:</label>
+                    <select id="atmosphere" class="input-field">
+                        <option value="oxygenated">Oxigenada</option>
+                        <option value="methane">Metano</option>
+                        <option value="thin">Rarefeita</option>
+                        <option value="dense">Densa</option>
+                    </select>
+                </div>
+                <div class="slider-group">
+                    <label for="luminosity">Luminosidade Estelar:</label>
+                    <input type="range" id="luminosity" min="0.1" max="2.0" step="0.1" value="1.0">
+                    <span class="text-sm text-gray-400">Valor: <span id="luminosity-value">1.0x</span></span>
+                </div>
+                <div class="slider-group">
+                    <label for="temperature">Temperatura Média (°C):</label>
+                    <input type="range" id="temperature" min="-50" max="100" step="5" value="20">
+                    <span class="text-sm text-gray-400">Valor: <span id="temperature-value">20°C</span></span>
+                </div>
+                <div class="slider-group">
+                    <label for="water-presence">Presença de Água:</label>
+                    <input type="range" id="water-presence" min="0" max="100" step="10" value="50">
+                    <span class="text-sm text-gray-400">Valor: <span id="water-presence-value">50%</span></span>
+                </div>
+                <div class="slider-group">
+                    <label for="soil-type">Tipo de Solo:</label>
+                    <select id="soil-type" class="input-field">
+                        <option value="clay">Argiloso</option>
+                        <option value="sandy">Arenoso</option>
+                        <option value="rocky">Rochoso</option>
+                        <option value="fertile">Fértil</option>
+                    </select>
+                </div>
+                <div class="slider-group">
+                    <label for="minerals">Minerais Predominantes:</label>
+                    <select id="minerals" class="input-field">
+                        <option value="iron">Ferro</option>
+                        <option value="silicon">Silício</option>
+                        <option value="carbon">Carbono</option>
+                        <option value="none">Nenhum</option>
+                    </select>
+                </div>
+                <div class="slider-group">
+                    <label for="ecosystem-size">Tamanho do Ecossistema:</label>
+                    <select id="ecosystem-size" class="input-field">
+                        <option value="small">Pequeno (500x300)</option>
+                        <option value="medium" selected>Médio (800x450)</option>
+                        <option value="large">Grande (1200x675)</option>
+                    </select>
+                </div>
+
+                <button id="randomize-config-btn" class="btn w-full mb-2">Gerar Configuração Aleatória</button>
+                <div class="mb-4">
+                    <label for="preset-sandbox" class="block text-sm font-medium text-gray-400 mb-1">Presets Sandbox:</label>
+                    <select id="preset-sandbox" class="input-field">
+                        <option value="">-- Selecione um Preset --</option>
+                        <option value="oasis">Oásis Marciano</option>
+                        <option value="swamp">Pântano Glacial</option>
+                        <option value="forest">Floresta Encantada</option>
+                        <option value="desert">Deserto de Cristal</option>
+                    </select>
+                </div>
+                <button id="apply-config-btn" class="btn w-full text-xl bg-purple-600 hover:bg-purple-700">Aplicar Configuração</button>
+            </div>
+        </div>
+
+        <main id="main-content">
+            <div id="top-panel">
+                <button id="open-left-panel-btn" class="panel-toggle-btn lg:hidden"><i class="fas fa-bars"></i></button>
+                <h1 class="text-3xl font-bold text-white drop-shadow-lg text-center">Ecosse™ - Sandbox Planetário</h1>
+                <div class="flex items-center gap-4">
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="use-gemini-toggle" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <span class="text-white text-sm hidden sm:inline">Insights Gemini</span>
+                    <button id="gemini-api-key-btn" class="btn px-3 py-2 text-sm bg-blue-700 hover:bg-blue-800">
+                        <i class="fas fa-key"></i> <span class="hidden sm:inline">API Key</span>
+                    </button>
+                </div>
+                <button id="open-right-panel-btn" class="panel-toggle-btn lg:hidden"><i class="fas fa-info-circle"></i></button>
+            </div>
+
+            <div id="three-js-canvas-container"></div>
+
+            <div id="bottom-panel">
+                <h3 class="text-xl font-semibold mb-3 text-gray-200">Elementos e Controles</h3>
+                <div class="multiplier-buttons flex justify-center mb-4">
+                    <button class="multiplier-btn selected" data-multiplier="1">1x</button>
+                    <button class="multiplier-btn" data-multiplier="5">5x</button>
+                    <button class="multiplier-btn" data-multiplier="10">10x</button>
+                </div>
+                <div class="element-grid mb-4">
+                    <div class="element-item" data-element="water">💧 Água</div>
+                    <div class="element-item" data-element="rock">🪨 Rocha</div>
+                    <div class="element-item" data-element="plant">🌿 Planta</div>
+                    <div class="element-item" data-element="creature">🐛 Criatura</div>
+                    <div class="element-item" data-element="sun">☀️ Sol</div>
+                    <div class="element-item" data-element="rain">🌧️ Chuva</div>
+                    <div class="element-item" data-element="fungus">🍄 Fungo</div>
+                    <div class="element-item" data-element="meteor">☄️ Meteoro</div>
+                    <div class="element-item" data-element="volcano">🌋 Vulcão</div>
+                    <div class="element-item" data-element="eraser">🚫 Borracha</div>
+                </div>
+                <div id="simulation-controls" class="flex flex-wrap justify-center gap-3">
+                    <button id="play-pause-btn" class="btn bg-green-600 hover:bg-green-700">▶️ Play</button>
+                    <button id="time-lapse-btn" class="btn bg-yellow-600 hover:bg-yellow-700">⏩ Avançar Tempo</button>
+                    <button id="save-sim-btn" class="btn bg-indigo-600 hover:bg-indigo-700">💾 Salvar</button>
+                    <button id="load-sim-btn" class="btn bg-slate-600 hover:bg-slate-700">📂 Carregar</button>
+                    <button id="share-sim-btn" class="btn bg-purple-600 hover:bg-purple-700">🔗 Compartilhar</button>
+                    <button id="reset-sim-btn" class="btn bg-red-600 hover:bg-red-700">🔄 Reiniciar</button>
+                    <button id="reset-camera-btn" class="btn bg-gray-600 hover:bg-gray-700">📷 Reset Câmera</button>
+                </div>
+            </div>
+        </main>
+
+        <div id="right-panel" class="panel">
+            <h3 class="text-xl font-semibold mb-3 text-gray-200 flex items-center justify-between">
+                Informações
+                <button id="toggle-right-panel" class="panel-toggle-btn lg:hidden"><i class="fas fa-chevron-right"></i></button>
+            </h3>
+            <div id="simulation-info-panel" class="flex-grow mb-4 overflow-y-auto pr-2 custom-scrollbar">
+                <p class="text-sm text-gray-400">Estabilidade: <span id="ecosystem-stability">N/A</span></p>
+                <p class="text-sm text-gray-400">Biodiversidade: <span id="ecosystem-biodiversity">N/A</span></p>
+                <p class="text-sm text-gray-400">Recursos: <span id="ecosystem-resources">N/A</span></p>
+                <div class="mt-4">
+                    <h4 class="text-md font-semibold text-gray-300 mb-2">Insights do Ecosse™ <span class="text-xs text-indigo-400">(Gemini)</span></h4>
+                    <div id="gemini-insights" class="text-sm text-gray-400 italic">
+                        <p>Carregando insights...</p>
+                    </div>
+                </div>
+            </div>
+            <h3 class="text-xl font-semibold mb-3 text-gray-200">Diário do Observador</h3>
+            <div id="observer-log" class="flex-grow bg-gray-900 bg-opacity-50 p-3 rounded-md text-gray-400 text-sm overflow-y-auto max-h-64 custom-scrollbar">
+                <p>Bem-vindo ao seu novo ecossistema.</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+
+    <!-- Modals and Message Box -->
+    <div id="gemini-api-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button id="gemini-api-close-btn" class="modal-close-btn">&times;</button>
+            <h3 class="text-xl font-semibold mb-4">Configurar Chave API Gemini</h3>
+            <p class="text-gray-400 mb-4">Para usar os insights do Ecosse™, por favor, insira sua chave API do Google Gemini.</p>
+            <input type="password" id="gemini-api-key-input" class="input-field" placeholder="Sua Chave API">
+            <button id="save-gemini-key-btn" class="btn w-full">Salvar Chave</button>
+        </div>
+    </div>
+
+    <div id="element-detail-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button id="element-detail-close-btn" class="modal-close-btn">&times;</button>
+            <h3 id="element-detail-title" class="text-xl font-semibold mb-4">Detalhes do Elemento</h3>
+            <div id="element-detail-content" class="text-gray-400"></div>
+        </div>
+    </div>
+
+    <div id="message-box" class="message-box" style="display: none;">
+        <p id="message-text"></p>
+        <button id="message-ok-btn" class="btn">OK</button>
+    </div>
+</body>
+</html>
