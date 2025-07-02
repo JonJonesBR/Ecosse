@@ -84,21 +84,40 @@ export class EcosystemElement {
         this.age = 0;
     }
 
-    update(simulationState) {
+    update(simulationState, config) {
         this.age++;
-        this.health -= this.decayRate;
+        let decay = this.decayRate;
+
+        // General decay influenced by gravity
+        decay *= config.gravity; 
+
+        this.health -= decay;
     }
 }
 
 class PlantElement extends EcosystemElement {
     constructor(id, x, y) { super(id, x, y, 'plant'); }
-    update(simulationState) {
-        super.update(simulationState);
-        const hasWater = simulationState.config.waterPresence > 20;
-        if (hasWater && simulationState.config.luminosity > 0.5) {
-            this.health += 0.1;
+    update(simulationState, config) {
+        super.update(simulationState, config);
+
+        // Plants need water and light to thrive
+        const waterFactor = config.waterPresence / 100; // 0 to 1
+        const luminosityFactor = config.luminosity / 2.0; // 0 to 1
+        const temperatureFactor = 1 - Math.abs(config.temperature - 20) / 50; // Optimal at 20C, drops off
+
+        let growthRate = 0.1 * waterFactor * luminosityFactor * temperatureFactor;
+
+        // Soil type influence
+        if (config.soilType === 'fertile') {
+            growthRate *= 1.5;
+        } else if (config.soilType === 'sandy' || config.soilType === 'rocky') {
+            growthRate *= 0.5;
         }
-        if (this.health > 80 && Math.random() < this.reproductionChance) {
+
+        this.health += growthRate;
+
+        // Reproduction based on health and conditions
+        if (this.health > 80 && Math.random() < this.reproductionChance * waterFactor * luminosityFactor) {
             simulationState.newElements.push(new PlantElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
         }
     }
@@ -106,19 +125,37 @@ class PlantElement extends EcosystemElement {
 
 class CreatureElement extends EcosystemElement {
     constructor(id, x, y) { super(id, x, y, 'creature'); }
-    update(simulationState) {
-        super.update(simulationState);
-        this.x += (Math.random() - 0.5) * this.speed;
-        this.y += (Math.random() - 0.5) * this.speed;
-        this.energy -= 0.1;
+    update(simulationState, config) {
+        super.update(simulationState, config);
+
+        // Movement influenced by gravity
+        this.x += (Math.random() - 0.5) * this.speed / config.gravity;
+        this.y += (Math.random() - 0.5) * this.speed / config.gravity;
+
+        // Energy consumption influenced by temperature and water
+        let energyConsumption = 0.1;
+        if (config.temperature > 30 || config.temperature < 0) {
+            energyConsumption *= 1.5; // More energy consumed in extreme temperatures
+        }
+        if (config.waterPresence < 30) {
+            energyConsumption *= 1.2; // More energy consumed with less water
+        }
+        this.energy -= energyConsumption;
+
         if(this.energy <= 0) this.health -= 0.5;
 
+        // Interaction with plants (food source)
         simulationState.elements.forEach(el => {
             if (el.type === 'plant' && Math.hypot(this.x - el.x, this.y - el.y) < 20) {
                 el.health -= 1;
                 this.energy += 0.5;
             }
         });
+
+        // Reproduction influenced by health and environment
+        if (this.health > 70 && this.energy > 50 && Math.random() < this.reproductionChance / config.gravity) {
+            simulationState.newElements.push(new CreatureElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
+        }
     }
 }
 

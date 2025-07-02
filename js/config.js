@@ -15,18 +15,37 @@ export function setupConfigPanelListeners(refs, onApplyCallback) {
     refs.luminosity.addEventListener('input', () => updateSliderValue(refs.luminosity, refs.luminosityValue, 'x'));
     refs.temperature.addEventListener('input', () => updateSliderValue(refs.temperature, refs.temperatureValue, '°C'));
     refs.waterPresence.addEventListener('input', () => updateSliderValue(refs.waterPresence, refs.waterPresenceValue, '%'));
-    refs.randomizeConfigBtn.addEventListener('click', () => generateRandomConfig(refs));
+    refs.randomizeConfigBtn.addEventListener('click', () => {
+        generateRandomConfig(refs);
+        onApplyCallback();
+    });
     refs.presetSandbox.addEventListener('change', (e) => applyPreset(refs, e.target.value));
     refs.applyConfigBtn.addEventListener('click', onApplyCallback);
 }
 
 function generateRandomConfig(refs) {
     const randomOption = (select) => select.options[Math.floor(Math.random() * select.options.length)].value;
+
     refs.planetType.value = randomOption(refs.planetType);
     refs.gravity.value = (Math.random() * (1.5 - 0.5) + 0.5).toFixed(1);
-    // ... e assim por diante para todos os outros campos.
-    // Para simplificar, vamos apenas atualizar os valores visuais
+    refs.atmosphere.value = randomOption(refs.atmosphere);
+    refs.luminosity.value = (Math.random() * (2.0 - 0.1) + 0.1).toFixed(1);
+    refs.temperature.value = (Math.random() * (100 - (-50)) + (-50)).toFixed(0);
+    refs.waterPresence.value = (Math.random() * (100 - 0) + 0).toFixed(0);
+    refs.soilType.value = randomOption(refs.soilType);
+    refs.minerals.value = randomOption(refs.minerals);
+    refs.ecosystemSize.value = randomOption(refs.ecosystemSize);
+
+    // Update all slider values
     updateSliderValue(refs.gravity, refs.gravityValue, 'x');
+    updateSliderValue(refs.luminosity, refs.luminosityValue, 'x');
+    updateSliderValue(refs.temperature, refs.temperatureValue, '°C');
+    updateSliderValue(refs.waterPresence, refs.waterPresenceValue, '%');
+
+    // Apply the new random configuration
+    const newConfig = getCurrentConfig(refs);
+    populateConfigForm(refs, newConfig);
+    // The onApplyCallback is handled by the event listener in main.js
 }
 
 function applyPreset(refs, presetName) {

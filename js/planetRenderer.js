@@ -22,8 +22,9 @@ export function init3DScene(container, initialConfig) {
     container.appendChild(renderer.domElement);
 
     scene.add(new THREE.AmbientLight(0x404040, 2));
-    const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    const sunLight = new THREE.DirectionalLight(0xffffff, initialConfig.luminosity);
     sunLight.position.set(200, 100, 200);
+    sunLight.name = 'sunLight'; // Name the light for easy access
     scene.add(sunLight);
 
     controls = new OrbitControls(camera, renderer.domElement);
@@ -55,40 +56,40 @@ export function updatePlanetAppearance(config) {
 }
 
 function createPlanet(config) {
-    if (planetMesh) scene.remove(planetMesh);
+    if (planetMesh) {
+        scene.remove(planetMesh);
+        planetMesh.geometry.dispose();
+        planetMesh.material.dispose();
+    }
 
     const planetRadius = ecosystemSizes[config.ecosystemSize].radius;
     const geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
 
-    // Base color on planet type
-    let color = 0x16a34a; // Default terrestrial
-    switch (config.planetType) {
-        case 'desert':
-            color = 0xD2B48C; // Tan
-            break;
-        case 'aquatic':
-            color = 0x1E90FF; // DodgerBlue
-            break;
-        case 'volcanic':
-            color = 0x8B0000; // DarkRed
-            break;
-        case 'gas':
-            color = 0xFFD700; // Gold
-            break;
-    }
+    // Dynamic texture generation
+    const texture = new THREE.CanvasTexture(generatePlanetTexture(config));
+    const material = new THREE.MeshPhongMaterial({
+        map: texture,
+        shininess: config.planetType === 'aquatic' ? 100 : 10
+    });
 
-    const material = new THREE.MeshPhongMaterial({ color });
     planetMesh = new THREE.Mesh(geometry, material);
     scene.add(planetMesh);
 
     // Atmosphere
+    if (planetMesh.children.length > 0) {
+        const atmosphere = planetMesh.children[0];
+        atmosphere.geometry.dispose();
+        atmosphere.material.dispose();
+        planetMesh.remove(atmosphere);
+    }
+
     const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
     let atmosphereColor = 0xFFFFFF;
     let atmosphereOpacity = 0.3;
 
     switch (config.atmosphere) {
         case 'methane':
-            atmosphereColor = 0xFF4500; // OrangeRed
+            atmosphereColor = 0xFF4500;
             atmosphereOpacity = 0.4;
             break;
         case 'thin':
@@ -106,12 +107,70 @@ function createPlanet(config) {
         side: THREE.BackSide
     });
     const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-    planetMesh.add(atmosphere); // Add atmosphere as a child of the planet
+    planetMesh.add(atmosphere);
+
+    // Update sun light
+    const sunLight = scene.getObjectByName('sunLight');
+    if (sunLight) {
+        sunLight.intensity = config.luminosity;
+    }
 
     camera.position.z = planetRadius * 2;
     controls.minDistance = planetRadius + 10;
     controls.maxDistance = planetRadius * 4;
     controls.update();
+}
+
+function generatePlanetTexture(config) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 256;
+    const context = canvas.getContext('2d');
+
+    // Base color
+    let baseColor;
+    switch (config.planetType) {
+        case 'desert': baseColor = '#D2B48C'; break;
+        case 'aquatic': baseColor = '#1E90FF'; break;
+        case 'volcanic': baseColor = '#A0522D'; break;
+        case 'gas': baseColor = '#FFD700'; break;
+        default: baseColor = '#228B22'; break; // Terrestrial
+    }
+    context.fillStyle = baseColor;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Add features
+    for (let i = 0; i < 3000; i++) {
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        const radius = Math.random() * 1.5;
+        let color;
+
+        switch (config.planetType) {
+            case 'terrestrial':
+                color = Math.random() > 0.2 ? '#1E90FF' : '#FFFFFF'; // Water and clouds
+                break;
+            case 'desert':
+                color = '#A0522D'; // Darker sand
+                break;
+            case 'aquatic':
+                color = '#FFFFFF'; // Clouds
+                break;
+            case 'volcanic':
+                color = Math.random() > 0.1 ? '#FF4500' : '#8B0000'; // Lava and rock
+                break;
+            case 'gas':
+                color = Math.random() > 0.5 ? '#FFA500' : '#FFDEAD'; // Gas bands
+                break;
+        }
+
+        context.fillStyle = color;
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+    }
+
+    return canvas;
 }
 
 function createStarfield() {

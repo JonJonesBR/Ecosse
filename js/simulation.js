@@ -57,7 +57,7 @@ function updateSimulation(useGemini, geminiApiKey) {
     const originalLength = ecosystemElements.length;
     ecosystemElements.forEach(element => {
         const healthBefore = element.health;
-        element.update(simulationState)
+        element.update(simulationState, simulationConfig);
         if(element.health !== healthBefore) hasChanges = true;
     });
     
