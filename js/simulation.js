@@ -157,6 +157,9 @@ export function getElementAtPoint3D(point3D) {
 export function resetSimulation() {
     pauseSimulationLoop();
     ecosystemElements = [];
+    // Reinitialize planet appearance after reset
+    const currentConfig = getSimulationConfig();
+    updatePlanetAppearance(currentConfig);
     drawEcosystem();
     updateSimulationInfo();
     logToObserver("Simulação reiniciada por completo.");
