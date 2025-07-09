@@ -82,6 +82,7 @@ export const elementDefinitions = {
     meteor: { emoji: '☄️', color: 'rgba(180, 180, 180, 0.9)', baseHealth: 50, size: 40, decayRate: 100 },
     volcano: { emoji: '🌋', color: 'rgba(100, 0, 0, 0.9)', baseHealth: 200, size: 45, decayRate: 0.05, eruptionChance: 0.001 },
     eraser: { emoji: '🚫', color: 'rgba(255, 0, 0, 0.5)', size: 30, decayRate: 0 },
+    extractionProbe: { emoji: '⛏️', color: 'rgba(150, 150, 0, 0.9)', baseHealth: 80, size: 20, decayRate: 0.02, extractionRate: 1 },
     predator: { emoji: '🐺', color: 'rgba(139, 69, 19, 0.9)', baseHealth: 150, energy: 120, size: 25, decayRate: 0.4, reproductionChance: 0.001, speed: 3, preferredPrey: ['creature'] },
     tribe: { emoji: '🛖', color: 'rgba(150, 100, 50, 0.9)', baseHealth: 500, size: 40, decayRate: 0.01, population: 10, technologyLevel: 1 },
 };
@@ -583,6 +584,37 @@ class MeteorElement extends EcosystemElement {
     }
 }
 
+class ExtractionProbeElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'extractionProbe');
+        this.extractedMinerals = { iron: 0, silicon: 0, carbon: 0 };
+    }
+
+    update(simulationState, config) {
+        super.update(simulationState, config);
+
+        const nearbyRocks = simulationState.elements.filter(el =>
+            el.type === 'rock' && el.health > 0 && Math.hypot(this.x - el.x, this.y - el.y) < 50
+        );
+
+        if (nearbyRocks.length > 0) {
+            const targetRock = nearbyRocks[0];
+            const extractionRate = elementDefinitions.extractionProbe.extractionRate;
+
+            for (const mineral in this.extractedMinerals) {
+                if (targetRock.currentMinerals[mineral] > 0) {
+                    const extracted = Math.min(extractionRate, targetRock.currentMinerals[mineral]);
+                    this.extractedMinerals[mineral] += extracted;
+                    targetRock.currentMinerals[mineral] -= extracted;
+                    // logToObserver(`Sonda de Extração em ${this.x.toFixed(0)},${this.y.toFixed(0)} extraiu ${extracted.toFixed(2)} de ${mineral} da rocha.`);
+                }
+            }
+        } else {
+            this.health -= 0.1; // Lose health if no rocks to extract from
+        }
+    }
+}
+
 export const elementClasses = {
     water: WaterElement,
     rock: RockElement,
@@ -595,5 +627,6 @@ export const elementClasses = {
     volcano: VolcanoElement,
     predator: PredatorElement,
     tribe: TribeElement,
+    extractionProbe: ExtractionProbeElement,
     eraser: (id, x, y) => new EcosystemElement(id, x, y, 'eraser'),
 };
