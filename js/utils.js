@@ -3,6 +3,7 @@ import * as THREE from 'three';
 
 // js/utils.js
 let messageBox, messageText, observerLogDiv;
+let logHistory = []; // New array to store log history
 
 export function initUIDomReferences(msgBox, msgText, obsLog, okBtn) {
     messageBox = msgBox;
@@ -34,7 +35,15 @@ export function logToObserver(message) {
         if (observerLogDiv.children.length > 50) {
             observerLogDiv.removeChild(observerLogDiv.lastChild);
         }
+        logHistory.push(p.textContent); // Store in history
+        if (logHistory.length > 1000) { // Limit history size
+            logHistory.shift();
+        }
     }
+}
+
+export function getLogHistory() {
+    return logHistory;
 }
 
 export function showModal(modalElement) {
@@ -43,6 +52,11 @@ export function showModal(modalElement) {
 
 export function hideModal(modalElement) {
     if (modalElement) modalElement.style.display = 'none';
+}
+
+function mutateGene(geneValue, mutationRate) {
+    const mutationAmount = (Math.random() * 2 - 1) * mutationRate; // Random value between -mutationRate and +mutationRate
+    return Math.max(0, geneValue + mutationAmount); // Ensure gene value doesn't go below zero
 }
 
 export function updateSliderValue(slider, span, suffix = '') {
@@ -59,7 +73,7 @@ export const ecosystemSizes = {
 
 export const elementDefinitions = {
     water: { emoji: '💧', color: 'rgba(0, 191, 255, 0.7)', baseHealth: 100, size: 20, decayRate: 0.01 },
-    rock: { emoji: '🪨', color: 'rgba(100, 100, 100, 0.9)', baseHealth: 100, size: 30, decayRate: 0 },
+    rock: { emoji: '🪨', color: 'rgba(100, 100, 100, 0.9)', baseHealth: 100, size: 30, decayRate: 0, minerals: { iron: 50, silicon: 50, carbon: 50 } },
     plant: { emoji: '🌿', color: 'rgba(0, 200, 0, 0.9)', baseHealth: 100, energy: 50, size: 25, decayRate: 0.2, reproductionChance: 0.005 },
     creature: { emoji: '🐛', color: 'rgba(255, 165, 0, 0.9)', baseHealth: 100, energy: 100, size: 18, decayRate: 0.3, reproductionChance: 0.002, speed: 2, preferredBiome: 'terrestrial' },
     sun: { emoji: '☀️', color: 'rgba(255, 255, 0, 0.8)', baseHealth: 100, size: 30, decayRate: 0.05 },
@@ -67,7 +81,8 @@ export const elementDefinitions = {
     fungus: { emoji: '🍄', color: 'rgba(150, 75, 0, 0.9)', baseHealth: 80, energy: 30, size: 22, decayRate: 0.15, reproductionChance: 0.003 },
     meteor: { emoji: '☄️', color: 'rgba(180, 180, 180, 0.9)', baseHealth: 50, size: 40, decayRate: 100 },
     volcano: { emoji: '🌋', color: 'rgba(100, 0, 0, 0.9)', baseHealth: 200, size: 45, decayRate: 0.05, eruptionChance: 0.001 },
-    eraser: { emoji: '🚫', color: 'rgba(255, 0, 0, 0.5)', size: 30, decayRate: 0 }
+    eraser: { emoji: '🚫', color: 'rgba(255, 0, 0, 0.5)', size: 30, decayRate: 0 },
+    predator: { emoji: '🐺', color: 'rgba(139, 69, 19, 0.9)', baseHealth: 150, energy: 120, size: 25, decayRate: 0.4, reproductionChance: 0.001, speed: 3, preferredPrey: ['creature'] },
 };
 
 export class EcosystemElement {
@@ -87,21 +102,22 @@ export class EcosystemElement {
         this.age = 0;
     }
 
-    update(simulationState, config) {
+    update(simulationState, config, weather, activeTechEffects) { // Added activeTechEffects parameter
         this.age++;
         let decay = this.decayRate;
 
         // General decay influenced by gravity
         decay *= config.gravity; 
 
-        this.health -= decay;
+        // General weather effect
+        this.health -= decay * weather.effect; // Apply weather effect to decay
     }
 }
 
 class PlantElement extends EcosystemElement {
     constructor(id, x, y) { super(id, x, y, 'plant'); }
-    update(simulationState, config) {
-        super.update(simulationState, config);
+    update(simulationState, config, weather, activeTechEffects) { // Added activeTechEffects parameter
+        super.update(simulationState, config, weather, activeTechEffects);
 
         // Plants need water and light to thrive
         const waterFactor = config.waterPresence / 100; // 0 to 1
@@ -109,6 +125,22 @@ class PlantElement extends EcosystemElement {
         const temperatureFactor = 1 - Math.abs(config.temperature - 20) / 50; // Optimal at 20C, drops off
 
         let growthRate = 0.1 * waterFactor * luminosityFactor * temperatureFactor;
+
+        // Apply technology effects
+        if (activeTechEffects.plant_growth_multiplier) {
+            growthRate *= activeTechEffects.plant_growth_multiplier;
+        }
+
+        // Weather effects on plants
+        if (weather.type === 'rainy') {
+            growthRate *= 1.5; // Rain helps plants grow
+        } else if (weather.type === 'dry') {
+            growthRate *= 0.5; // Dry weather hinders growth
+        } else if (weather.type === 'snowy') {
+            growthRate *= 0.2; // Snow hinders growth significantly
+        } else if (weather.type === 'cloudy') {
+            growthRate *= 0.8; // Cloudy reduces light
+        }
 
         // Soil type influence
         if (config.soilType === 'fertile') {
@@ -119,6 +151,27 @@ class PlantElement extends EcosystemElement {
 
         this.health += growthRate;
 
+        // Consume minerals from nearby rocks
+        const nearbyRocks = simulationState.elements.filter(el =>
+            el.type === 'rock' && Math.hypot(this.x - el.x, this.y - el.y) < 50 && el.currentMinerals
+        );
+
+        if (nearbyRocks.length > 0) {
+            const targetRock = nearbyRocks[0]; // Just take the first one for simplicity
+            const mineralToConsume = 'iron'; // Example: plants consume iron
+            let consumptionRate = 0.1; // How much mineral to consume per tick
+
+            // Apply mineral extraction bonus from technology
+            if (activeTechEffects.mineral_extraction_bonus) {
+                consumptionRate *= (1 + activeTechEffects.mineral_extraction_bonus);
+            }
+
+            if (targetRock.currentMinerals[mineralToConsume] > consumptionRate) {
+                targetRock.currentMinerals[mineralToConsume] -= consumptionRate;
+                this.health += consumptionRate * 0.5; // Plants gain health from minerals
+            }
+        }
+
         // Reproduction based on health and conditions
         if (this.health > 80 && Math.random() < this.reproductionChance * waterFactor * luminosityFactor) {
             simulationState.newElements.push(new PlantElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
@@ -127,9 +180,23 @@ class PlantElement extends EcosystemElement {
 }
 
 class CreatureElement extends EcosystemElement {
-    constructor(id, x, y) { super(id, x, y, 'creature'); this.preferredBiome = elementDefinitions.creature.preferredBiome; this.target = null; }
-    update(simulationState, config) {
-        super.update(simulationState, config);
+    constructor(id, x, y, parentGenes = {}) {
+        super(id, x, y, 'creature');
+        this.preferredBiome = elementDefinitions.creature.preferredBiome;
+        this.target = null;
+
+        // Genetic properties
+        this.geneSpeed = parentGenes.geneSpeed !== undefined ? mutateGene(parentGenes.geneSpeed, 0.1) : elementDefinitions.creature.speed; // Default or inherited with mutation
+        this.geneSize = parentGenes.geneSize !== undefined ? mutateGene(parentGenes.geneSize, 0.1) : elementDefinitions.creature.size; // Default or inherited with mutation
+        this.geneReproductionChance = parentGenes.geneReproductionChance !== undefined ? mutateGene(parentGenes.geneReproductionChance, 0.1) : elementDefinitions.creature.reproductionChance; // Default or inherited with mutation
+
+        // Apply genetic properties to actual stats
+        this.speed = this.geneSpeed;
+        this.size = this.geneSize;
+        this.reproductionChance = this.geneReproductionChance;
+    }
+    update(simulationState, config, weather, activeTechEffects) { // Added activeTechEffects parameter
+        super.update(simulationState, config, weather, activeTechEffects);
 
         // Find nearest plant if no target or target is dead
         if (!this.target || this.target.health <= 0) {
@@ -145,14 +212,14 @@ class CreatureElement extends EcosystemElement {
             }
         }
 
-        // Movement influenced by gravity and target
-        let moveX = (Math.random() - 0.5) * this.speed / config.gravity;
-        let moveY = (Math.random() - 0.5) * this.speed / config.gravity;
+        // Movement influenced by gravity and target, based on geneSpeed
+        let moveX = (Math.random() - 0.5) * this.geneSpeed / config.gravity;
+        let moveY = (Math.random() - 0.5) * this.geneSpeed / config.gravity;
 
         if (this.target) {
             const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
-            moveX = Math.cos(angle) * this.speed / config.gravity;
-            moveY = Math.sin(angle) * this.speed / config.gravity;
+            moveX = Math.cos(angle) * this.geneSpeed / config.gravity;
+            moveY = Math.sin(angle) * this.geneSpeed / config.gravity;
         }
 
         this.x += moveX;
@@ -166,6 +233,21 @@ class CreatureElement extends EcosystemElement {
         if (config.waterPresence < 30) {
             energyConsumption *= 1.2; // More energy consumed with less water
         }
+
+        // Apply technology effects
+        if (activeTechEffects.creature_energy_reduction) {
+            energyConsumption *= (1 - activeTechEffects.creature_energy_reduction);
+        }
+
+        // Weather effects on creatures
+        if (weather.type === 'rainy') {
+            energyConsumption *= 1.2; // Creatures might struggle in heavy rain
+        } else if (weather.type === 'dry') {
+            energyConsumption *= 1.5; // Dry weather makes creatures thirsty
+        } else if (weather.type === 'snowy') {
+            energyConsumption *= 1.8; // Cold weather consumes more energy
+        }
+
         this.energy -= energyConsumption;
 
         // Biome suitability
@@ -188,9 +270,94 @@ class CreatureElement extends EcosystemElement {
             }
         });
 
-        // Reproduction influenced by health and environment
-        if (this.health > 70 && this.energy > 50 && Math.random() < this.reproductionChance / config.gravity * biomeSuitability) {
-            simulationState.newElements.push(new CreatureElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
+        // Reproduction influenced by health and environment, using geneReproductionChance
+        if (this.health > 70 && this.energy > 50 && Math.random() < this.geneReproductionChance / config.gravity * biomeSuitability) {
+            simulationState.newElements.push(new CreatureElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50, {
+                geneSpeed: this.geneSpeed,
+                geneSize: this.geneSize,
+                geneReproductionChance: this.geneReproductionChance
+            }));
+        }
+    }
+}
+
+class PredatorElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'predator');
+        this.target = null;
+        this.preferredPrey = elementDefinitions.predator.preferredPrey;
+    }
+
+    update(simulationState, config, weather, activeTechEffects) { // Added activeTechEffects parameter
+        super.update(simulationState, config, weather, activeTechEffects);
+
+        // Find nearest prey if no target or target is dead
+        if (!this.target || this.target.health <= 0 || !simulationState.elements.includes(this.target)) {
+            const potentialPrey = simulationState.elements.filter(el =>
+                this.preferredPrey.includes(el.type) && el.health > 0
+            );
+            if (potentialPrey.length > 0) {
+                this.target = potentialPrey.reduce((prev, curr) => {
+                    const distPrev = Math.hypot(this.x - prev.x, this.y - prev.y);
+                    const distCurr = Math.hypot(this.x - curr.x, this.y - curr.y);
+                    return (distPrev < distCurr) ? prev : curr;
+                });
+            } else {
+                this.target = null;
+            }
+        }
+
+        // Movement towards target
+        let moveX = (Math.random() - 0.5) * this.speed / config.gravity;
+        let moveY = (Math.random() - 0.5) * this.speed / config.gravity;
+
+        if (this.target) {
+            const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+            moveX = Math.cos(angle) * this.speed / config.gravity;
+            moveY = Math.sin(angle) * this.speed / config.gravity;
+        }
+
+        this.x += moveX;
+        this.y += moveY;
+
+        // Energy consumption
+        let energyConsumption = 0.15;
+
+        // Weather effects on predators
+        if (weather.type === 'snowy') {
+            energyConsumption *= 1.5; // More energy consumed in cold
+        } else if (weather.type === 'dry') {
+            energyConsumption *= 1.2; // Dry weather makes them thirsty
+        }
+
+        this.energy -= energyConsumption;
+
+        // Interaction with prey (eating)
+        if (this.target && Math.hypot(this.x - this.target.x, this.y - this.target.y) < (this.size + this.target.size) / 2) {
+            // Predator eats prey
+            const eatenAmount = 10; // Amount of health/energy to transfer
+            this.target.health -= eatenAmount;
+            this.health += eatenAmount * 0.5; // Predator gains health
+            this.energy += eatenAmount * 0.8; // Predator gains energy
+
+            // Ensure health and energy don't exceed base values
+            this.health = Math.min(this.health, elementDefinitions.predator.baseHealth);
+            this.energy = Math.min(this.energy, elementDefinitions.predator.energy);
+
+            if (this.target.health <= 0) {
+                logToObserver(`Predador devorou ${this.target.type} em ${this.target.x.toFixed(0)},${this.target.y.toFixed(0)}.`);
+                this.target = null; // Prey is gone
+            }
+        }
+
+        // Health decay if energy is low
+        if (this.energy <= 0) {
+            this.health -= 0.5;
+        }
+
+        // Reproduction
+        if (this.health > 100 && this.energy > 80 && Math.random() < this.reproductionChance / config.gravity) {
+            simulationState.newElements.push(new PredatorElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
         }
     }
 }
@@ -227,7 +394,11 @@ class WaterElement extends EcosystemElement {
 }
 
 class RockElement extends EcosystemElement {
-    constructor(id, x, y) { super(id, x, y, 'rock'); this.height = Math.random() * 50 + 10; } // Random height
+    constructor(id, x, y) {
+        super(id, x, y, 'rock');
+        this.height = Math.random() * 50 + 10; // Random height
+        this.currentMinerals = { ...elementDefinitions.rock.minerals }; // Initialize with defined minerals
+    }
     update(simulationState, config) {
         super.update(simulationState, config);
         // Rocks are mostly static, but might erode over time
@@ -348,5 +519,6 @@ export const elementClasses = {
     fungus: (id, x, y) => new EcosystemElement(id, x, y, 'fungus'),
     meteor: MeteorElement,
     volcano: VolcanoElement,
+    predator: PredatorElement,
     eraser: (id, x, y) => new EcosystemElement(id, x, y, 'eraser'),
 };

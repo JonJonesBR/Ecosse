@@ -144,11 +144,15 @@
                     <div class="element-item" data-element="fungus">🍄 Fungo</div>
                     <div class="element-item" data-element="meteor">☄️ Meteoro</div>
                     <div class="element-item" data-element="volcano">🌋 Vulcão</div>
+                    <div class="element-item" data-element="predator">🐺 Predador</div>
                     <div class="element-item" data-element="eraser">🚫 Borracha</div>
                 </div>
                 <div id="simulation-controls" class="flex flex-wrap justify-center gap-3">
                     <button id="play-pause-btn" class="btn bg-green-600 hover:bg-green-700">▶️ Play</button>
                     <button id="time-lapse-btn" class="btn bg-yellow-600 hover:bg-yellow-700">⏩ Avançar Tempo</button>
+                    <button id="achievements-btn" class="control-btn">🏆 Conquistas</button>
+                    <button id="tech-tree-btn" class="control-btn">🌳 Tecnologias</button>
+                    <button id="history-btn" class="control-btn">📜 Histórico</button>
                     <button id="save-sim-btn" class="btn bg-indigo-600 hover:bg-indigo-700">💾 Salvar</button>
                     <button id="load-sim-btn" class="btn bg-slate-600 hover:bg-slate-700">📂 Carregar</button>
                     <button id="share-sim-btn" class="btn bg-purple-600 hover:bg-purple-700">🔗 Compartilhar</button>
@@ -167,6 +171,7 @@
                 <p class="text-sm text-gray-400">Estabilidade: <span id="ecosystem-stability">N/A</span></p>
                 <p class="text-sm text-gray-400">Biodiversidade: <span id="ecosystem-biodiversity">N/A</span></p>
                 <p class="text-sm text-gray-400">Recursos: <span id="ecosystem-resources">N/A</span></p>
+                <p class="text-sm text-gray-400">Clima: <span id="current-weather">☀️ Ensolarado</span></p>
                 <div class="mt-4">
                     <h4 class="text-md font-semibold text-gray-300 mb-2">Insights do Ecosse™ <span class="text-xs text-indigo-400">(Gemini)</span></h4>
                     <div id="gemini-insights" class="text-sm text-gray-400 italic">
@@ -199,6 +204,36 @@
             <button id="element-detail-close-btn" class="modal-close-btn">&times;</button>
             <h3 id="element-detail-title" class="text-xl font-semibold mb-4">Detalhes do Elemento</h3>
             <div id="element-detail-content" class="text-gray-400"></div>
+        </div>
+    </div>
+
+    <div id="achievements-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="achievements-close-btn">&times;</span>
+            <h2>🏆 Conquistas</h2>
+            <div id="achievements-list" class="achievements-grid">
+                <!-- Achievements will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="tech-tree-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="tech-tree-close-btn">&times;</span>
+            <h2>🌳 Árvore de Tecnologias</h2>
+            <div id="tech-tree-list" class="tech-tree-grid">
+                <!-- Technologies will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="history-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="history-close-btn">&times;</span>
+            <h2>📜 Histórico do Ecossistema</h2>
+            <div id="history-log" class="history-log-content">
+                <!-- History will be dynamically loaded here -->
+            </div>
         </div>
     </div>
 

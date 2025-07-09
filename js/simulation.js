@@ -1,15 +1,23 @@
 import { elementClasses, logToObserver, ecosystemSizes, showMessage, EcosystemElement } from './utils.js';
 import { askGeminiForElementInsight, askGeminiForEcosystemAnalysis } from './geminiApi.js';
+import { askGeminiForNarrativeEvent } from './geminiApi.js'; // NEW IMPORT
+import { getActiveTechnologyEffects } from './techTree.js'; // NEW IMPORT
 import { updateElements3D, convert3DTo2DCoordinates, get3DIntersectionPoint } from './planetRenderer.js';
+import { trackElementCreated, trackSimulationCycle, checkStabilityAchievement, resetAchievementProgress } from './achievements.js'; // NEW IMPORT
+import { updateWeatherDisplay } from './main.js'; // NEW IMPORT
 
 // Variáveis de estado do módulo
 let ecosystemElements = [];
 let simulationConfig = {};
 let simulationInterval;
 let isSimulationRunning = false;
+let isTimeLapseActive = false;
 let placingElement = null;
 let elementMultiplier = 1;
 let currentMouse3DPoint = null;
+let currentUseGemini = false; // New state variable
+let currentGeminiApiKey = ""; // New state variable
+let currentWeather = { type: 'sunny', emoji: '☀️', effect: 1.0 }; // NEW: Current weather state
 
 // Referências da UI
 let ecosystemStabilitySpan, ecosystemBiodiversitySpan, ecosystemResourcesSpan, geminiInsightsDiv;
@@ -42,6 +50,43 @@ export function drawEcosystem() {
 function updateSimulation(useGemini, geminiApiKey) {
     if (!isSimulationRunning) return;
 
+    trackSimulationCycle(); // NEW: Track simulation cycles
+
+    const activeTechEffects = getActiveTechnologyEffects(); // Get active technology effects
+
+    // Dynamic Weather Logic
+    const weatherChangeChance = 0.005; // 0.5% chance per simulation tick
+    if (Math.random() < weatherChangeChance) {
+        const possibleWeather = [];
+
+        // Sunny/Clear is always an option
+        possibleWeather.push({ type: 'sunny', emoji: '☀️', effect: 1.0 });
+
+        // Rain/Cloudy based on water presence and temperature
+        if (simulationConfig.waterPresence > 40 && simulationConfig.temperature < 25) {
+            possibleWeather.push({ type: 'rainy', emoji: '🌧️', effect: 0.8 }); // Plants thrive, creatures suffer
+            possibleWeather.push({ type: 'cloudy', emoji: '☁️', effect: 0.9 }); // Reduced light
+        }
+
+        // Hot/Dry based on temperature and water presence
+        if (simulationConfig.temperature > 30 && simulationConfig.waterPresence < 30) {
+            possibleWeather.push({ type: 'dry', emoji: '🔥', effect: 1.2 }); // Increased decay for water/plants
+        }
+
+        // Cold/Snowy based on temperature
+        if (simulationConfig.temperature < 0) {
+            possibleWeather.push({ type: 'snowy', emoji: '❄️', effect: 0.7 }); // Reduced growth, increased decay
+        }
+
+        // Choose a random weather from possible options
+        const newWeather = possibleWeather[Math.floor(Math.random() * possibleWeather.length)];
+        if (newWeather.type !== currentWeather.type) {
+            currentWeather = newWeather;
+            logToObserver(`O clima mudou para: ${currentWeather.emoji} ${currentWeather.type}`);
+            updateWeatherDisplay(currentWeather); // Update UI for weather
+        }
+    }
+
     const simulationState = {
         config: simulationConfig,
         elements: ecosystemElements,
@@ -57,7 +102,7 @@ function updateSimulation(useGemini, geminiApiKey) {
     const originalLength = ecosystemElements.length;
     ecosystemElements.forEach(element => {
         const healthBefore = element.health;
-        element.update(simulationState, simulationConfig);
+        element.update(simulationState, simulationConfig, currentWeather, activeTechEffects); // Pass activeTechEffects
         if(element.health !== healthBefore) hasChanges = true;
     });
     
@@ -74,20 +119,29 @@ function updateSimulation(useGemini, geminiApiKey) {
     if(hasChanges) {
         drawEcosystem();
         updateSimulationInfo();
+        checkStabilityAchievement(parseFloat(ecosystemStabilitySpan.textContent)); // NEW: Check stability achievement
     }
 
     // Interação opcional com a IA
     if (useGemini && geminiApiKey && Math.random() < 0.01) {
         askGeminiForEcosystemAnalysis(simulationConfig, ecosystemElements, geminiApiKey, geminiInsightsDiv, logToObserver);
     }
+
+    // Trigger narrative event with low probability
+    if (useGemini && geminiApiKey && Math.random() < 0.001) { // 0.1% chance per tick
+        askGeminiForNarrativeEvent(simulationConfig, ecosystemElements, geminiApiKey, logToObserver);
+    }
 }
 
 export function startSimulationLoop(useGemini, geminiApiKey) {
     if (isSimulationRunning) return;
     isSimulationRunning = true;
+    currentUseGemini = useGemini; // Store the value
+    currentGeminiApiKey = geminiApiKey; // Store the value
     clearInterval(simulationInterval); // Limpa qualquer intervalo anterior
-    simulationInterval = setInterval(() => updateSimulation(useGemini, geminiApiKey), 100);
-    logToObserver("Simulação iniciada.");
+    const intervalTime = isTimeLapseActive ? 50 : 100; // Faster for time-lapse
+    simulationInterval = setInterval(() => updateSimulation(useGemini, geminiApiKey), intervalTime);
+    logToObserver("Simulação iniciada." + (isTimeLapseActive ? " (Lapso de tempo ativo)" : ""));
 }
 
 export function pauseSimulationLoop() {
@@ -121,6 +175,7 @@ export function addElementAtPoint(point3D, type, multiplier, useGemini, geminiAp
             newElement = ElementClass(id, newX, newY);
         }
         ecosystemElements.push(newElement);
+        trackElementCreated(type); // NEW: Track element creation
     }
     drawEcosystem(); // Redesenha para mostrar o novo elemento
     
@@ -162,6 +217,7 @@ export function resetSimulation() {
     updatePlanetAppearance(currentConfig);
     drawEcosystem();
     updateSimulationInfo();
+    resetAchievementProgress(); // NEW: Reset achievement progress on simulation reset
     logToObserver("Simulação reiniciada por completo.");
 }
 
@@ -178,12 +234,15 @@ function updateSimulationInfo() {
     ecosystemResourcesSpan.textContent = `${simulationConfig.waterPresence || 0}% Água`;
 }
 
-// Esta função não é exportada pois é chamada por main.js, que já tem acesso ao toggleTimeLapse
 export function toggleTimeLapse() {
-    // A lógica de lapso de tempo pode ser mais complexa,
-    // por enquanto, vamos apenas logar a chamada.
-    logToObserver("Função de lapso de tempo acionada.");
-    showMessage("O lapso de tempo ainda não foi implementado nesta versão.");
+    isTimeLapseActive = !isTimeLapseActive;
+    if (isSimulationRunning) {
+        // If simulation is running, restart it with the new speed
+        pauseSimulationLoop();
+        startSimulationLoop(currentUseGemini, currentGeminiApiKey); // Use stored values
+    }
+    logToObserver("Lapso de tempo " + (isTimeLapseActive ? "ativado." : "desativado."));
+    showMessage("Lapso de tempo " + (isTimeLapseActive ? "ativado." : "desativado."));
 }
 
 export function handleCanvasInteraction(event, isClick, useGemini, geminiApiKey, showDetailsCallback, canvas) {

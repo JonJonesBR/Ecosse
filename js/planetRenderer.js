@@ -6,6 +6,8 @@ let scene, camera, renderer, controls;
 let planetMesh, starField, ghostElementMesh, rainParticles, cloudMesh, waterMesh;
 const elements3D = new THREE.Group();
 let rendererContainer;
+let dayCycleTime = 0; // New variable for day/night cycle
+let moonLight; // New variable for moon light
 
 export function init3DScene(container, initialConfig) {
     rendererContainer = container;
@@ -27,6 +29,11 @@ export function init3DScene(container, initialConfig) {
     sunLight.name = 'sunLight'; // Name the light for easy access
     scene.add(sunLight);
 
+    moonLight = new THREE.DirectionalLight(0xADD8E6, 0); // Light blue, initially off
+    moonLight.position.set(-200, -100, -200);
+    moonLight.name = 'moonLight';
+    scene.add(moonLight);
+
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
@@ -39,6 +46,36 @@ export function init3DScene(container, initialConfig) {
     const animate = () => {
         requestAnimationFrame(animate);
         controls.update();
+
+        // Update day/night cycle
+        dayCycleTime += 0.001; // Adjust speed of day/night cycle
+        const sunLight = scene.getObjectByName('sunLight');
+        const ambientLight = scene.getObjectByProperty('isAmbientLight', true);
+
+        if (sunLight) {
+            // Rotate sun around the planet
+            sunLight.position.x = Math.sin(dayCycleTime) * 200;
+            sunLight.position.z = Math.cos(dayCycleTime) * 200;
+
+            // Adjust sun intensity based on its position (simulating dawn/dusk)
+            const sunIntensityFactor = Math.max(0, Math.sin(dayCycleTime + Math.PI / 4)); // Offset for smoother transition
+            sunLight.intensity = initialConfig.luminosity * sunIntensityFactor;
+        }
+
+        if (moonLight) {
+            // Rotate moon opposite to sun
+            moonLight.position.x = Math.sin(dayCycleTime + Math.PI) * 200;
+            moonLight.position.z = Math.cos(dayCycleTime + Math.PI) * 200;
+
+            // Adjust moon intensity
+            const moonIntensityFactor = Math.max(0, Math.sin(dayCycleTime - Math.PI / 4)); // Offset for smoother transition
+            moonLight.intensity = 0.5 * moonIntensityFactor; // Moonlight is dimmer
+        }
+
+        if (ambientLight) {
+            // Adjust ambient light intensity based on time of day
+            ambientLight.intensity = 0.5 + (Math.sin(dayCycleTime) + 1) * 0.75; // Brighter during day, dimmer at night
+        }
 
         // Animate rain particles
         if (rainParticles && rainParticles.visible) {
@@ -77,67 +114,88 @@ export function updatePlanetAppearance(config) {
 }
 
 function createPlanet(config) {
-    if (planetMesh) {
-        scene.remove(planetMesh);
-        planetMesh.geometry.dispose();
-        planetMesh.material.dispose();
-    }
-
     const planetRadius = ecosystemSizes[config.ecosystemSize].radius;
-    const geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
 
-    // Dynamic texture generation
-    const texture = new THREE.CanvasTexture(generatePlanetTexture(config));
-    if (planetMesh && planetMesh.material.map) {
-        planetMesh.material.map.dispose(); // Dispose old texture
-    }
-    const material = new THREE.MeshPhongMaterial({
-        map: texture,
-        shininess: config.planetType === 'aquatic' ? 100 : 10
-    });
-
+    // Update or create planet mesh
     if (planetMesh) {
-        planetMesh.material = material;
+        // Update geometry only if radius changes
+        if (planetMesh.geometry.parameters.radius !== planetRadius) {
+            planetMesh.geometry.dispose();
+            planetMesh.geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
+        }
+
+        // Update material properties
+        const newTexture = new THREE.CanvasTexture(generatePlanetTexture(config));
+        if (planetMesh.material.map) {
+            planetMesh.material.map.dispose(); // Dispose old texture
+        }
+        planetMesh.material.map = newTexture;
+        planetMesh.material.shininess = config.planetType === 'aquatic' ? 100 : 10;
+        planetMesh.material.needsUpdate = true; // Important for material changes
     } else {
+        // Create new planet mesh if it doesn't exist
+        const geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
+        const material = new THREE.MeshPhongMaterial({
+            map: new THREE.CanvasTexture(generatePlanetTexture(config)),
+            shininess: config.planetType === 'aquatic' ? 100 : 10
+        });
         planetMesh = new THREE.Mesh(geometry, material);
         scene.add(planetMesh);
     }
 
-    // Atmosphere
-    if (planetMesh.children.length > 0) {
-        const atmosphere = planetMesh.children[0];
-        atmosphere.geometry.dispose();
-        atmosphere.material.dispose();
-        planetMesh.remove(atmosphere);
+    // Update or create atmosphere
+    let atmosphere = planetMesh.children.find(child => child.name === 'atmosphere');
+    if (atmosphere) {
+        // Update existing atmosphere material
+        let atmosphereColor = 0xFFFFFF;
+        let atmosphereOpacity = 0.3;
+
+        switch (config.atmosphere) {
+            case 'methane':
+                atmosphereColor = 0xFF4500;
+                atmosphereOpacity = 0.4;
+                break;
+            case 'thin':
+                atmosphereOpacity = 0.1;
+                break;
+            case 'dense':
+                atmosphereOpacity = 0.6;
+                break;
+        }
+        atmosphere.material.color.set(atmosphereColor);
+        atmosphere.material.opacity = atmosphereOpacity;
+        atmosphere.material.needsUpdate = true;
+    } else {
+        // Create new atmosphere if it doesn't exist
+        const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
+        let atmosphereColor = 0xFFFFFF;
+        let atmosphereOpacity = 0.3;
+
+        switch (config.atmosphere) {
+            case 'methane':
+                atmosphereColor = 0xFF4500;
+                atmosphereOpacity = 0.4;
+                break;
+            case 'thin':
+                atmosphereOpacity = 0.1;
+                break;
+            case 'dense':
+                atmosphereOpacity = 0.6;
+                break;
+        }
+
+        const atmosphereMaterial = new THREE.MeshBasicMaterial({
+            color: atmosphereColor,
+            transparent: true,
+            opacity: atmosphereOpacity,
+            side: THREE.BackSide
+        });
+        atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        atmosphere.name = 'atmosphere'; // Name the atmosphere for easy access
+        planetMesh.add(atmosphere);
     }
 
-    const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
-    let atmosphereColor = 0xFFFFFF;
-    let atmosphereOpacity = 0.3;
-
-    switch (config.atmosphere) {
-        case 'methane':
-            atmosphereColor = 0xFF4500;
-            atmosphereOpacity = 0.4;
-            break;
-        case 'thin':
-            atmosphereOpacity = 0.1;
-            break;
-        case 'dense':
-            atmosphereOpacity = 0.6;
-            break;
-    }
-
-    const atmosphereMaterial = new THREE.MeshBasicMaterial({
-        color: atmosphereColor,
-        transparent: true,
-        opacity: atmosphereOpacity,
-        side: THREE.BackSide
-    });
-    const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-    planetMesh.add(atmosphere);
-
-    // Update sun light
+    // Update sun light (already optimized)
     const sunLight = scene.getObjectByName('sunLight');
     if (sunLight) {
         sunLight.intensity = config.luminosity;
@@ -226,15 +284,16 @@ function generateCloudTexture() {
 }
 
 function createStarfield() {
-    if (starField) scene.remove(starField);
-    const positions = [];
-    for (let i = 0; i < 2000; i++) {
-        positions.push((Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000);
+    if (!starField) {
+        const positions = [];
+        for (let i = 0; i < 2000; i++) {
+            positions.push((Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000, (Math.random() - 0.5) * 2000);
+        }
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        starField = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xffffff, size: 1.5 }));
+        scene.add(starField);
     }
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-    starField = new THREE.Points(geometry, new THREE.PointsMaterial({ color: 0xffffff, size: 1.5 }));
-    scene.add(starField);
 }
 
 export function resetCamera(config) {
@@ -245,17 +304,29 @@ export function resetCamera(config) {
 }
 
 function createClouds(config) {
-    if (cloudMesh) scene.remove(cloudMesh);
     const planetRadius = ecosystemSizes[config.ecosystemSize].radius;
-    const cloudGeometry = new THREE.SphereGeometry(planetRadius * 1.02, 64, 64);
-    const cloudMaterial = new THREE.MeshPhongMaterial({
-        map: new THREE.CanvasTexture(generateCloudTexture()),
-        transparent: true,
-        opacity: 0.4,
-        blending: THREE.AdditiveBlending,
-    });
-    cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
-    scene.add(cloudMesh);
+
+    if (cloudMesh) {
+        // Update geometry only if radius changes
+        if (cloudMesh.geometry.parameters.radius !== planetRadius * 1.02) {
+            cloudMesh.geometry.dispose();
+            cloudMesh.geometry = new THREE.SphereGeometry(planetRadius * 1.02, 64, 64);
+        }
+        // Update material (texture and opacity)
+        cloudMesh.material.map = new THREE.CanvasTexture(generateCloudTexture());
+        cloudMesh.material.opacity = 0.4;
+        cloudMesh.material.needsUpdate = true;
+    } else {
+        const cloudGeometry = new THREE.SphereGeometry(planetRadius * 1.02, 64, 64);
+        const cloudMaterial = new THREE.MeshPhongMaterial({
+            map: new THREE.CanvasTexture(generateCloudTexture()),
+            transparent: true,
+            opacity: 0.4,
+            blending: THREE.AdditiveBlending,
+        });
+        cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
+        scene.add(cloudMesh);
+    }
 }
 
 function createRainParticles() {

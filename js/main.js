@@ -4,6 +4,8 @@ import { initSimulationUIReferences, setSimulationConfig, setEcosystemElements, 
 import { saveSimulation, loadSimulation, generateSeed, loadSimulationFromSeed } from './persistence.js';
 import { setupConfigPanelListeners, getCurrentConfig, populateConfigForm } from './config.js';
 import { askGeminiForEcosystemAnalysis } from './geminiApi.js';
+import { getAchievements } from './achievements.js'; // NEW IMPORT
+import { getTechnologies, unlockTechnology, getUnlockedTechnologies } from './techTree.js'; // NEW IMPORT
 
 let leftPanel, rightPanel;
 let useGemini = true;
@@ -23,7 +25,11 @@ function initializeApp() {
         'gemini-insights', 'bottom-panel', 'play-pause-btn', 'time-lapse-btn', 'save-sim-btn',
         'load-sim-btn', 'share-sim-btn', 'reset-sim-btn', 'reset-camera-btn', 'element-detail-modal',
         'element-detail-close-btn', 'element-detail-title', 'element-detail-content', 'gemini-api-modal',
-        'gemini-api-close-btn', 'gemini-api-key-input', 'save-gemini-key-btn'
+        'gemini-api-close-btn', 'gemini-api-key-input', 'save-gemini-key-btn',
+        'achievements-btn', 'achievements-modal', 'achievements-close-btn', 'achievements-list',
+        'current-weather',
+        'tech-tree-btn', 'tech-tree-modal', 'tech-tree-close-btn', 'tech-tree-list',
+        'history-btn', 'history-modal', 'history-close-btn', 'history-log' // NEW IDs
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -180,6 +186,10 @@ function setupEventListeners(refs, canvas) {
             console.log('Simulation paused.');
         }
     });
+    refs.timeLapseBtn.addEventListener('click', () => {
+        toggleTimeLapse();
+        console.log('Time-lapse toggled.');
+    });
     refs.resetSimBtn.addEventListener('click', () => {
         const currentConfig = getSimulationConfig();
         resetSimulation();
@@ -205,6 +215,39 @@ function setupEventListeners(refs, canvas) {
         console.log('Camera reset.');
     });
 
+    // NEW: Achievements Button and Modal
+    refs.achievementsBtn.addEventListener('click', () => {
+        populateAchievementsModal(refs.achievementsList);
+        showModal(refs.achievementsModal);
+        console.log('Achievements modal opened.');
+    });
+    refs.achievementsCloseBtn.addEventListener('click', () => {
+        hideModal(refs.achievementsModal);
+        console.log('Achievements modal closed.');
+    });
+
+    // NEW: Tech Tree Button and Modal
+    refs.techTreeBtn.addEventListener('click', () => {
+        populateTechTreeModal(refs.techTreeList);
+        showModal(refs.techTreeModal);
+        console.log('Tech Tree modal opened.');
+    });
+    refs.techTreeCloseBtn.addEventListener('click', () => {
+        hideModal(refs.techTreeModal);
+        console.log('Tech Tree modal closed.');
+    });
+
+    // NEW: History Button and Modal
+    refs.historyBtn.addEventListener('click', () => {
+        populateHistoryModal(refs.historyLog);
+        showModal(refs.historyModal);
+        console.log('History modal opened.');
+    });
+    refs.historyCloseBtn.addEventListener('click', () => {
+        hideModal(refs.historyModal);
+        console.log('History modal closed.');
+    });
+
     // Element Detail Modal
     refs.elementDetailCloseBtn.addEventListener('click', () => {
         hideModal(refs.elementDetailModal);
@@ -223,12 +266,142 @@ function setupEventListeners(refs, canvas) {
 
     function showElementDetails(element) {
         refs.elementDetailTitle.textContent = `${element.emoji} Detalhes do ${element.type}`;
-        refs.elementDetailContent.innerHTML = `<p>ID: ${element.id.toFixed(0)}</p><p>Saúde: ${element.health.toFixed(1)}</p>`;
+        let contentHtml = `<p><strong>ID:</strong> ${element.id.toFixed(0)}</p>
+                           <p><strong>Saúde:</strong> ${element.health.toFixed(1)}</p>
+                           <p><strong>Energia:</strong> ${element.energy !== undefined ? element.energy.toFixed(1) : 'N/A'}</p>
+                           <p><strong>Tamanho:</strong> ${element.size.toFixed(1)}</p>
+                           <p><strong>Velocidade:</strong> ${element.speed !== undefined ? element.speed.toFixed(1) : 'N/A'}</p>
+                           <p><strong>Chance de Reprodução:</strong> ${element.reproductionChance !== undefined ? (element.reproductionChance * 100).toFixed(3) + '%' : 'N/A'}</p>
+                           <p><strong>Idade:</strong> ${element.age}</p>`;
+
+        if (element.type === 'rock' && element.currentMinerals) {
+            contentHtml += `<p><strong>Minerais:</strong></p><ul>`;
+            for (const mineral in element.currentMinerals) {
+                contentHtml += `<li>${mineral.charAt(0).toUpperCase() + mineral.slice(1)}: ${element.currentMinerals[mineral].toFixed(2)}</li>`;
+            }
+            contentHtml += `</ul>`;
+        }
+
+        if (element.type === 'creature' && element.geneSpeed !== undefined) {
+            contentHtml += `<p><strong>Genes:</strong></p><ul>
+                               <li>Velocidade: ${element.geneSpeed.toFixed(2)}</li>
+                               <li>Tamanho: ${element.geneSize.toFixed(2)}</li>
+                               <li>Reprodução: ${(element.geneReproductionChance * 100).toFixed(3)}%</li>
+                           </ul>`;
+        }
+
+        refs.elementDetailContent.innerHTML = contentHtml;
         showModal(refs.elementDetailModal);
+    }
+}
+
+function populateAchievementsModal(achievementsListElement) {
+    achievementsListElement.innerHTML = ''; // Clear previous list
+    const achievements = getAchievements();
+    for (const key in achievements) {
+        const achievement = achievements[key];
+        const achievementDiv = document.createElement('div');
+        achievementDiv.classList.add('achievement-item');
+        if (achievement.unlocked) {
+            achievementDiv.classList.add('unlocked');
+        }
+
+        achievementDiv.innerHTML = `
+            <h3>${achievement.name} ${achievement.unlocked ? '✅' : '🔒'}</h3>
+            <p>${achievement.description}</p>
+            ${achievement.criteria ? `<p class="progress">Progresso: ${getAchievementProgressText(achievement)}</p>` : ''}
+        `;
+        achievementsListElement.appendChild(achievementDiv);
+    }
+}
+
+function populateTechTreeModal(techTreeListElement) {
+    techTreeListElement.innerHTML = ''; // Clear previous list
+    const techs = getTechnologies();
+    const unlocked = getUnlockedTechnologies();
+    const currentMinerals = { iron: 100, silicon: 100, carbon: 100 }; // Placeholder: get actual mineral counts
+
+    for (const techId in techs) {
+        const tech = techs[techId];
+        const techDiv = document.createElement('div');
+        techDiv.classList.add('tech-item');
+        if (tech.unlocked) {
+            techDiv.classList.add('unlocked');
+        }
+
+        let costHtml = '';
+        for (const mineral in tech.cost) {
+            costHtml += `<span class="mineral-cost">${tech.cost[mineral]} ${mineral}</span>`;
+        }
+
+        let prereqHtml = '';
+        if (tech.prerequisites.length > 0) {
+            prereqHtml = '<p class="prerequisites">Requisitos: ';
+            tech.prerequisites.forEach(prereqId => {
+                prereqHtml += `<span class="prereq-item ${unlocked[prereqId] ? 'unlocked' : 'locked'}">${techs[prereqId].name}</span>`;
+            });
+            prereqHtml += '</p>';
+        }
+
+        techDiv.innerHTML = `
+            <h3>${tech.name} ${tech.unlocked ? '✅' : '🔒'}</h3>
+            <p>${tech.description}</p>
+            <p class="cost">Custo: ${costHtml}</p>
+            ${prereqHtml}
+            <button class="unlock-tech-btn" data-tech-id="${techId}" ${tech.unlocked ? 'disabled' : ''}>Desbloquear</button>
+        `;
+        techTreeListElement.appendChild(techDiv);
+    }
+
+    // Add event listeners to unlock buttons
+    techTreeListElement.querySelectorAll('.unlock-tech-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const techId = event.target.dataset.techId;
+            // Need to pass actual current minerals here
+            if (unlockTechnology(techId, currentMinerals)) {
+                populateTechTreeModal(techTreeListElement); // Re-populate to update state
+            }
+        });
+    });
+}
+
+function populateHistoryModal(historyLogElement) {
+    historyLogElement.innerHTML = ''; // Clear previous content
+    const logHistory = getLogHistory();
+    logHistory.forEach(logEntry => {
+        const p = document.createElement('p');
+        p.textContent = logEntry;
+        historyLogElement.appendChild(p);
+    });
+    historyLogElement.scrollTop = historyLogElement.scrollHeight; // Scroll to bottom
+}
+
+function getAchievementProgressText(achievement) {
+    switch (achievement.id) {
+        case 'first_plant':
+            return `${achievement.criteria.plantsCreated}/1`;
+        case 'ecosystem_builder':
+            return `${achievement.criteria.totalElementsCreated}/100`;
+        case 'stable_ecosystem':
+            return `${achievement.criteria.stableCycles}/${achievement.criteria.requiredStableCycles} ciclos estáveis`;
+        case 'survivalist':
+            return `${achievement.criteria.simulationCycles}/${achievement.criteria.requiredCycles} ciclos`;
+        default:
+            return '';
+    }
+}
+
+let currentWeatherSpan; // Declare a variable to hold the span reference
+
+export function updateWeatherDisplay(weather) {
+    if (currentWeatherSpan) {
+        currentWeatherSpan.textContent = `${weather.emoji} ${weather.type.charAt(0).toUpperCase() + weather.type.slice(1)}`;
     }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
     console.log('DOMContentLoaded event fired.');
     initializeApp();
+    // Assign the span reference after initUIDomReferences is called
+    currentWeatherSpan = document.getElementById('current-weather');
 });
