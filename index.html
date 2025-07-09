@@ -153,6 +153,7 @@
                     <button id="achievements-btn" class="control-btn">🏆 Conquistas</button>
                     <button id="tech-tree-btn" class="control-btn">🌳 Tecnologias</button>
                     <button id="history-btn" class="control-btn">📜 Histórico</button>
+                    <button id="scenarios-btn" class="control-btn">🗺️ Cenários</button>
                     <button id="save-sim-btn" class="btn bg-indigo-600 hover:bg-indigo-700">💾 Salvar</button>
                     <button id="load-sim-btn" class="btn bg-slate-600 hover:bg-slate-700">📂 Carregar</button>
                     <button id="share-sim-btn" class="btn bg-purple-600 hover:bg-purple-700">🔗 Compartilhar</button>
@@ -172,6 +173,14 @@
                 <p class="text-sm text-gray-400">Biodiversidade: <span id="ecosystem-biodiversity">N/A</span></p>
                 <p class="text-sm text-gray-400">Recursos: <span id="ecosystem-resources">N/A</span></p>
                 <p class="text-sm text-gray-400">Clima: <span id="current-weather">☀️ Ensolarado</span></p>
+                <p class="text-sm text-gray-400">Estação: <span id="current-season-display">Primavera</span></p>
+                <p class="text-sm text-gray-400">Energia do Jogador: <span id="player-energy-display">100</span></p>
+                <div class="mt-4">
+                    <h4 class="text-md font-semibold text-gray-300 mb-2">História do Planeta:</h4>
+                    <div id="planet-story" class="text-sm text-gray-400 italic">
+                        <p>Gerando história...</p>
+                    </div>
+                </div>
                 <div class="mt-4">
                     <h4 class="text-md font-semibold text-gray-300 mb-2">Insights do Ecosse™ <span class="text-xs text-indigo-400">(Gemini)</span></h4>
                     <div id="gemini-insights" class="text-sm text-gray-400 italic">
@@ -237,9 +246,50 @@
         </div>
     </div>
 
+    <div id="scenarios-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <span class="close-button" id="scenarios-close-btn">&times;</span>
+            <h2>🗺️ Selecionar Cenário</h2>
+            <div id="scenarios-list" class="scenarios-grid">
+                <!-- Scenarios will be dynamically loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <div id="tribe-interaction-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button id="tribe-interaction-close-btn" class="modal-close-btn">&times;</button>
+            <h3 id="tribe-interaction-title" class="text-xl font-semibold mb-4">Interagir com Tribo</h3>
+            <div class="flex flex-col gap-4">
+                <button id="bless-tribe-btn" class="btn bg-green-600 hover:bg-green-700">🙏 Abençoar Tribo (Custo: 10 Energia)</button>
+                <button id="curse-tribe-btn" class="btn bg-red-600 hover:bg-red-700">💀 Amaldiçoar Tribo (Custo: 15 Energia)</button>
+            </div>
+        </div>
+    </div>
+
     <div id="message-box" class="message-box" style="display: none;">
         <p id="message-text"></p>
         <button id="message-ok-btn" class="btn">OK</button>
+    </div>
+
+    <!-- Victory Modal -->
+    <div id="victory-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 id="victory-title" class="text-xl font-semibold mb-4 text-green-400">Vitória!</h3>
+            <p id="victory-message" class="text-gray-300 mb-6">Você completou o cenário com sucesso!</p>
+            <button id="victory-restart-btn" class="btn bg-blue-600 hover:bg-blue-700 w-full mb-2">Reiniciar Cenário</button>
+            <button id="victory-main-menu-btn" class="btn bg-gray-600 hover:bg-gray-700 w-full">Menu Principal</button>
+        </div>
+    </div>
+
+    <!-- Failure Modal -->
+    <div id="failure-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <h3 id="failure-title" class="text-xl font-semibold mb-4 text-red-400">Derrota!</h3>
+            <p id="failure-message" class="text-gray-300 mb-6">Você falhou em completar o cenário.</p>
+            <button id="failure-restart-btn" class="btn bg-blue-600 hover:bg-blue-700 w-full mb-2">Tentar Novamente</button>
+            <button id="failure-main-menu-btn" class="btn bg-gray-600 hover:bg-gray-700 w-full">Menu Principal</button>
+        </div>
     </div>
 </body>
 </html>

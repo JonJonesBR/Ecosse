@@ -67,3 +67,23 @@ Evento Narrativo:`;
     const event = await askGemini(prompt, apiKey);
     if (event) logFn(`Evento Narrativo: ${event}`);
 }
+
+export async function askGeminiForPlanetStory(config, apiKey, logFn) {
+    const prompt = `Crie uma história de fundo concisa e única para um planeta com as seguintes características. A história deve ser interessante e inspiradora, com cerca de 3-5 frases, e deve focar na origem ou em um evento significativo na história do planeta.
+
+Características do Planeta:
+- Tipo de Planeta: ${config.planetType}
+- Temperatura Média: ${config.temperature}°C
+- Presença de Água: ${config.waterPresence}%
+- Luminosidade Estelar: ${config.luminosity}x
+- Gravidade: ${config.gravity}x
+- Atmosfera: ${config.atmosphere}
+- Tipo de Solo: ${config.soilType}
+- Minerais Predominantes: ${config.minerals}
+
+História do Planeta:`;
+
+    const story = await askGemini(prompt, apiKey);
+    if (story) logFn(`História do Planeta: ${story}`);
+    return story;
+}

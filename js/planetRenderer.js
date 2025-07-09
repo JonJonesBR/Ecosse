@@ -4,7 +4,9 @@ import { elementDefinitions, ecosystemSizes } from './utils.js';
 
 let scene, camera, renderer, controls;
 let planetMesh, starField, ghostElementMesh, rainParticles, cloudMesh, waterMesh;
-const elements3D = new THREE.Group();
+const elements3D = new THREE.Group(); // This will now hold non-instanced elements
+let instancedMeshes = {}; // NEW: To hold InstancedMesh objects keyed by element type
+const dummy = new THREE.Object3D(); // NEW: Dummy object for setting instance matrices
 let rendererContainer;
 let dayCycleTime = 0; // New variable for day/night cycle
 let moonLight; // New variable for moon light
@@ -41,7 +43,22 @@ export function init3DScene(container, initialConfig) {
     createStarfield();
     createClouds(initialConfig);
     createRainParticles();
-    scene.add(elements3D);
+
+    // NEW: Initialize InstancedMeshes for common elements
+    for (const type in elementDefinitions) {
+        const def = elementDefinitions[type];
+        if (['plant', 'creature', 'rock'].includes(type)) { // Elements to be instanced
+            const { geometry, material } = getBaseMeshForInstancing(type);
+            if (geometry && material) {
+                const instancedMesh = new THREE.InstancedMesh(geometry, material, 5000); // Max instances
+                instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+                instancedMeshes[type] = instancedMesh;
+                scene.add(instancedMesh);
+            }
+        }
+    }
+
+    scene.add(elements3D); // elements3D will now hold non-instanced elements
 
     const animate = () => {
         requestAnimationFrame(animate);
@@ -74,7 +91,7 @@ export function init3DScene(container, initialConfig) {
 
         if (ambientLight) {
             // Adjust ambient light intensity based on time of day
-            ambientLight.intensity = 0.5 + (Math.sin(dayCycleTime) + 1) * 0.75; // Brighter during day, dimmer at night
+            ambientLight.intensity = 0.8 + (Math.sin(dayCycleTime) + 1) * 0.75; // Brighter during day, dimmer at night (adjusted for brighter night)
         }
 
         // Animate rain particles
@@ -140,6 +157,7 @@ function createPlanet(config) {
             shininess: config.planetType === 'aquatic' ? 100 : 10
         });
         planetMesh = new THREE.Mesh(geometry, material);
+        planetMesh.rotation.z = Math.PI / 8; // Add a slight axial tilt (22.5 degrees)
         scene.add(planetMesh);
     }
 
@@ -359,28 +377,10 @@ function createMeshForElement(element) {
     let material;
 
     // If it's a water element, we don't create a mesh here as it's handled by the consolidated waterMesh
-    if (element.type === 'water') {
-        return null;
+    if (element.type === 'water' || ['plant', 'creature', 'rock'].includes(element.type)) {
+        return null; // These types are now handled by InstancedMesh
     } else {
         switch (element.type) {
-            case 'rock':
-                geometry = new THREE.ConeGeometry(size * 0.8, element.height, 8);
-                material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
-                break;
-            case 'plant':
-                geometry = new THREE.ConeGeometry(size * 0.7, size * 2, 8);
-                material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
-                break;
-            case 'creature':
-                geometry = new THREE.SphereGeometry(size, 16, 16);
-                let creatureColor = def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')');
-                if (element.preferredBiome === 'aquatic') {
-                    creatureColor = '#0000FF'; // Blue for aquatic creatures
-                } else if (element.preferredBiome === 'desert') {
-                    creatureColor = '#8B4513'; // SaddleBrown for desert creatures
-                }
-                material = new THREE.MeshPhongMaterial({ color: creatureColor });
-                break;
             case 'sun':
                 geometry = new THREE.SphereGeometry(size, 32, 32);
                 material = new THREE.MeshBasicMaterial({ color: 0xFFFF00 }); // Yellow for sun
@@ -388,6 +388,26 @@ function createMeshForElement(element) {
             case 'rain':
                 geometry = new THREE.BoxGeometry(size * 0.5, size * 2, size * 0.5); // Simple raindrop
                 material = new THREE.MeshBasicMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'), transparent: true, opacity: 0.6 });
+                break;
+            case 'fungus':
+                geometry = new THREE.SphereGeometry(size, 16, 16);
+                material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+                break;
+            case 'meteor':
+                geometry = new THREE.SphereGeometry(size, 16, 16);
+                material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+                break;
+            case 'volcano':
+                geometry = new THREE.ConeGeometry(size * 0.8, 50, 8);
+                material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+                break;
+            case 'tribe':
+                geometry = new THREE.BoxGeometry(size * 1.5, size * 1.5, size * 1.5); // Simple box for tribe
+                material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+                break;
+            case 'eraser':
+                geometry = new THREE.SphereGeometry(size, 16, 16);
+                material = new THREE.MeshBasicMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'), transparent: true, opacity: 0.5 });
                 break;
             default:
                 geometry = new THREE.SphereGeometry(size, 16, 16);
@@ -518,78 +538,170 @@ function createCrater(position, radius) {
     planetGeometry.normalsNeedUpdate = true;
 }
 
+function getBaseMeshForInstancing(type) {
+    const def = elementDefinitions[type];
+    const size = def.size * 0.5;
+    let geometry;
+    let material;
+
+    switch (type) {
+        case 'rock':
+            geometry = new THREE.ConeGeometry(size * 0.8, 50, 8); // Fixed height for instanced rocks
+            material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+            break;
+        case 'plant':
+            geometry = new THREE.ConeGeometry(size * 0.7, size * 2, 8);
+            material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+            break;
+        case 'creature':
+            geometry = new THREE.SphereGeometry(size, 16, 16);
+            material = new THREE.MeshPhongMaterial({ color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')') });
+            break;
+        default:
+            return { geometry: null, material: null };
+    }
+    return { geometry, material };
+}
+
+
+
 export function updateElements3D(elements, config, currentMouse3DPoint, placingElement) {
     if (!planetMesh || !config) return;
+
+    const maxRenderedElementsPerType = 500; // Limit the number of 3D elements per type
+
+    // Clear previous instances
+    for (const type in instancedMeshes) {
+        instancedMeshes[type].count = 0;
+    }
+
     // Sincronizar elementos
     const activeIds = new Set();
-    const meshesToKeep = [];
     let hasRain = false;
 
-    elements.forEach(el => {
-        if (el.type === 'rain') {
-            hasRain = true;
+    // Filter and limit elements to be rendered in 3D
+    const elementsToRender = {};
+    for (const el of elements) {
+        if (!elementsToRender[el.type]) {
+            elementsToRender[el.type] = [];
         }
-        // Skip water elements as they are handled by the consolidated waterMesh
-        if (el.type === 'water') {
-            return;
+        if (elementsToRender[el.type].length < maxRenderedElementsPerType) {
+            elementsToRender[el.type].push(el);
         }
-        activeIds.add(el.id);
-        let mesh = elements3D.children.find(c => c.userData.id === el.id);
+    }
 
-        if (!mesh) {
-            if (el.type === 'sun') {
-                mesh = createMeshForElement(el);
-                if (!mesh) return;
-                mesh.userData.id = el.id;
-                mesh.position.set(500, 500, 500);
-                scene.add(mesh);
-            } else if (el.type === 'meteor') {
-                mesh = createMeshForElement(el);
-                if (!mesh) return;
-                mesh.userData.id = el.id;
-                mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
-                elements3D.add(mesh);
+    // Process elements to render
+    for (const type in elementsToRender) {
+        elementsToRender[type].forEach((el, index) => {
+            if (el.type === 'rain') {
+                hasRain = true;
+            }
+
+            const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
+
+            if (['plant', 'creature', 'rock'].includes(el.type)) {
+                // Handle instanced elements
+                const instancedMesh = instancedMeshes[el.type];
+                if (instancedMesh) {
+                    dummy.position.copy(pos);
+                    dummy.lookAt(planetMesh.position);
+                    dummy.updateMatrix();
+                    instancedMesh.setMatrixAt(instancedMesh.count, dummy.matrix);
+
+                    // Set color based on health
+                    const healthFactor = el.health / 100; // Assuming max health is 100
+                    const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
+                    const deadColor = new THREE.Color(0x808080); // Grey
+                    const instanceColor = new THREE.Color().lerpColors(deadColor, baseColor, healthFactor);
+                    instancedMesh.setColorAt(instancedMesh.count, instanceColor);
+
+                    instancedMesh.count++;
+                }
+            } else if (el.type === 'water') {
+                // Handle water elements (still individual meshes for now)
+                activeIds.add(el.id);
+                let mesh = elements3D.children.find(c => c.userData.id === el.id);
+
+                if (!mesh) {
+                    const waterMaterial = new THREE.MeshPhongMaterial({
+                        color: 0x1E90FF, // DodgerBlue
+                        transparent: true,
+                        opacity: 0.7,
+                        side: THREE.DoubleSide
+                    });
+                    const waterSize = el.size * Math.min(1, el.amount / 100);
+                    const waterGeometry = new THREE.PlaneGeometry(waterSize, waterSize);
+                    mesh = new THREE.Mesh(waterGeometry, waterMaterial);
+                    mesh.userData.id = el.id;
+                    mesh.userData.type = 'water';
+                    elements3D.add(mesh);
+                }
+                mesh.position.copy(pos);
+                mesh.lookAt(planetMesh.position);
             } else {
-                mesh = createMeshForElement(el);
-                if (!mesh) return;
-                mesh.userData.id = el.id;
-                elements3D.add(mesh);
-            }
-        } else {
-            // Update existing mesh properties if needed (e.g., water amount)
-            if (el.type === 'water') {
-                const scale = Math.min(1, el.amount / 100);
-                mesh.scale.set(scale, scale, 1);
-            }
-        }
-        const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
-        if (el.type === 'meteor') {
-            mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
-        } else {
-            mesh.position.copy(pos);
-            mesh.lookAt(planetMesh.position);
-        }
+                // Handle non-instanced elements (sun, meteor, volcano, tribe, fungus, eraser, rain)
+                activeIds.add(el.id);
+                let mesh = elements3D.children.find(c => c.userData.id === el.id);
 
-        // Visual feedback for element health
-        if (mesh.material.color) {
-            const healthFactor = el.health / 100; // Assuming max health is 100
-            const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
-            const deadColor = new THREE.Color(0x808080); // Grey
-            mesh.material.color.lerpColors(deadColor, baseColor, healthFactor);
-        }
-        meshesToKeep.push(mesh);
-    });
+                if (!mesh) {
+                    mesh = createMeshForElement(el);
+                    if (!mesh) return; // Should not happen for these types now
+                    mesh.userData.id = el.id;
+                    mesh.userData.type = el.type; // Store type for easier filtering
+                    elements3D.add(mesh);
 
-    // Remove meshes that are no longer in the elements list
+                    if (el.type === 'sun') {
+                        mesh.position.set(500, 500, 500); // Sun is a special case, fixed position
+                        scene.add(mesh); // Add sun directly to scene, not elements3D
+                    } else if (el.type === 'meteor') {
+                        mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
+                    }
+                }
+
+                // Update existing mesh properties
+                if (el.type === 'meteor') {
+                    mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
+                } else if (el.type !== 'sun') { // Sun position is fixed
+                    mesh.position.copy(pos);
+                    mesh.lookAt(planetMesh.position);
+                }
+
+                // Visual feedback for element health
+                if (mesh.material.color) {
+                    const healthFactor = el.health / 100; // Assuming max health is 100
+                    const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
+                    const deadColor = new THREE.Color(0x808080); // Grey
+                    mesh.material.color.lerpColors(deadColor, baseColor, healthFactor);
+                }
+            }
+        });
+    }
+
+    // Update instance matrices and colors
+    for (const type in instancedMeshes) {
+        instancedMeshes[type].instanceMatrix.needsUpdate = true;
+        if (instancedMeshes[type].instanceColor) {
+            instancedMeshes[type].instanceColor.needsUpdate = true;
+        }
+    }
+
+    // Remove non-instanced meshes that are no longer in the elements list or exceed the limit
     elements3D.children.slice().forEach(child => {
-        if (!activeIds.has(child.userData.id) && child.userData.id !== undefined && child.userData.type !== 'water') {
+        // Check if the element still exists in the simulation and is within the rendering limit
+        const elementExistsAndShouldBeRendered = elementsToRender[child.userData.type] &&
+                                                 elementsToRender[child.userData.type].some(el => el.id === child.userData.id);
+
+        // Also check if it's an instanced type, if so, it should not be in elements3D anymore
+        const isInstancedType = ['plant', 'creature', 'rock'].includes(child.userData.type);
+
+        if ((!elementExistsAndShouldBeRendered && child.userData.id !== undefined && child.userData.type !== 'water') || isInstancedType) {
             elements3D.remove(child);
             child.geometry.dispose();
             child.material.dispose();
         }
     });
 
-    // Handle water as a single mesh
+    // Handle water as a single mesh (existing logic, no change needed here)
     const waterElements = elements.filter(el => el.type === 'water');
     if (waterElements.length > 0) {
         // Remove existing water meshes from elements3D if any
@@ -632,7 +744,7 @@ export function updateElements3D(elements, config, currentMouse3DPoint, placingE
     }
     rainParticles.visible = hasRain;
 
-    // Lógica do fantasma
+    // Lógica do fantasma (existing logic, no change needed here)
     if (ghostElementMesh) scene.remove(ghostElementMesh);
     if (placingElement && placingElement !== 'eraser' && currentMouse3DPoint) {
         // Create a dummy element object for ghost rendering

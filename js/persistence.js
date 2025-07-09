@@ -1,7 +1,7 @@
 // js/persistence.js
 
 import { showMessage, logToObserver } from './utils.js';
-import { getAchievements, loadAchievements } from './achievements.js'; // NEW IMPORT
+import { getAchievements, loadAchievements, saveAchievements } from './achievements.js'; // NEW IMPORT
 import { getUnlockedTechnologies, loadTechnologies } from './techTree.js'; // NEW IMPORT
 
 // Assuming pako is available globally or imported elsewhere if needed for compression
@@ -19,6 +19,7 @@ export function saveSimulation(config, elements, geminiKey, useGemini, cameraSta
         unlockedTechnologies: getUnlockedTechnologies() // NEW: Save unlocked technologies
     };
     localStorage.setItem('ecosimulation', JSON.stringify(simulationData));
+    saveAchievements(); // Save achievements separately
     showMessage('Simulação salva!');
     logToObserver('Simulação salva no armazenamento local.');
 }

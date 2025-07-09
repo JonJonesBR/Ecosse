@@ -83,6 +83,7 @@ export const elementDefinitions = {
     volcano: { emoji: '🌋', color: 'rgba(100, 0, 0, 0.9)', baseHealth: 200, size: 45, decayRate: 0.05, eruptionChance: 0.001 },
     eraser: { emoji: '🚫', color: 'rgba(255, 0, 0, 0.5)', size: 30, decayRate: 0 },
     predator: { emoji: '🐺', color: 'rgba(139, 69, 19, 0.9)', baseHealth: 150, energy: 120, size: 25, decayRate: 0.4, reproductionChance: 0.001, speed: 3, preferredPrey: ['creature'] },
+    tribe: { emoji: '🛖', color: 'rgba(150, 100, 50, 0.9)', baseHealth: 500, size: 40, decayRate: 0.01, population: 10, technologyLevel: 1 },
 };
 
 export class EcosystemElement {
@@ -184,6 +185,7 @@ class CreatureElement extends EcosystemElement {
         super(id, x, y, 'creature');
         this.preferredBiome = elementDefinitions.creature.preferredBiome;
         this.target = null;
+        this.fleeingFrom = null; // NEW: To store the predator it's fleeing from
 
         // Genetic properties
         this.geneSpeed = parentGenes.geneSpeed !== undefined ? mutateGene(parentGenes.geneSpeed, 0.1) : elementDefinitions.creature.speed; // Default or inherited with mutation
@@ -198,25 +200,45 @@ class CreatureElement extends EcosystemElement {
     update(simulationState, config, weather, activeTechEffects) { // Added activeTechEffects parameter
         super.update(simulationState, config, weather, activeTechEffects);
 
-        // Find nearest plant if no target or target is dead
-        if (!this.target || this.target.health <= 0) {
-            const plants = simulationState.elements.filter(el => el.type === 'plant' && el.health > 0);
-            if (plants.length > 0) {
-                this.target = plants.reduce((prev, curr) => {
-                    const distPrev = Math.hypot(this.x - prev.x, this.y - prev.y);
-                    const distCurr = Math.hypot(this.x - curr.x, this.y - curr.y);
-                    return (distPrev < distCurr) ? prev : curr;
-                });
-            } else {
-                this.target = null;
+        // NEW: Fleeing logic
+        const nearbyPredators = simulationState.elements.filter(el =>
+            el.type === 'predator' && el.health > 0 && Math.hypot(this.x - el.x, this.y - el.y) < 150 // Flee radius
+        );
+
+        if (nearbyPredators.length > 0) {
+            // Prioritize fleeing from the closest predator
+            this.fleeingFrom = nearbyPredators.reduce((prev, curr) => {
+                const distPrev = Math.hypot(this.x - prev.x, this.y - prev.y);
+                const distCurr = Math.hypot(this.x - curr.x, this.y - curr.y);
+                return (distPrev < distCurr) ? prev : curr;
+            });
+            this.target = null; // Clear plant target when fleeing
+        } else {
+            this.fleeingFrom = null; // No predators to flee from
+            // Find nearest plant if no target or target is dead
+            if (!this.target || this.target.health <= 0) {
+                const plants = simulationState.elements.filter(el => el.type === 'plant' && el.health > 0);
+                if (plants.length > 0) {
+                    this.target = plants.reduce((prev, curr) => {
+                        const distPrev = Math.hypot(this.x - prev.x, this.y - prev.y);
+                        const distCurr = Math.hypot(this.x - curr.x, this.y - curr.y);
+                        return (distPrev < distCurr) ? prev : curr;
+                    });
+                } else {
+                    this.target = null;
+                }
             }
         }
 
-        // Movement influenced by gravity and target, based on geneSpeed
+        // Movement influenced by gravity and target/fleeing, based on geneSpeed
         let moveX = (Math.random() - 0.5) * this.geneSpeed / config.gravity;
         let moveY = (Math.random() - 0.5) * this.geneSpeed / config.gravity;
 
-        if (this.target) {
+        if (this.fleeingFrom) {
+            const angle = Math.atan2(this.fleeingFrom.y - this.y, this.fleeingFrom.x - this.x); // Angle towards predator
+            moveX = -Math.cos(angle) * this.geneSpeed * 1.5 / config.gravity; // Move away faster
+            moveY = -Math.sin(angle) * this.geneSpeed * 1.5 / config.gravity;
+        } else if (this.target) {
             const angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
             moveX = Math.cos(angle) * this.geneSpeed / config.gravity;
             moveY = Math.sin(angle) * this.geneSpeed / config.gravity;
@@ -358,6 +380,58 @@ class PredatorElement extends EcosystemElement {
         // Reproduction
         if (this.health > 100 && this.energy > 80 && Math.random() < this.reproductionChance / config.gravity) {
             simulationState.newElements.push(new PredatorElement(Date.now() + Math.random(), this.x + (Math.random() - 0.5) * 50, this.y + (Math.random() - 0.5) * 50));
+        }
+    }
+}
+
+class TribeElement extends EcosystemElement {
+    constructor(id, x, y, initialPopulation = 10) {
+        super(id, x, y, 'tribe');
+        this.population = initialPopulation;
+        this.technologyLevel = elementDefinitions.tribe.technologyLevel;
+    }
+
+    update(simulationState, config, weather, activeTechEffects) {
+        super.update(simulationState, config, weather, activeTechEffects);
+
+        // Tribe consumes resources (e.g., plants)
+        const nearbyPlants = simulationState.elements.filter(el =>
+            el.type === 'plant' && Math.hypot(this.x - el.x, this.y - el.y) < 100
+        );
+
+        if (nearbyPlants.length > 0 && this.population > 0) {
+            const plantToConsume = nearbyPlants[0];
+            const consumptionRate = 0.1 * this.population;
+            if (plantToConsume.health > consumptionRate) {
+                plantToConsume.health -= consumptionRate;
+                this.health += consumptionRate * 0.1; // Tribe gains health from consuming
+            } else {
+                this.health -= 0.5; // Lose health if no food
+            }
+        } else if (this.population > 0) {
+            this.health -= 0.5; // Lose health if no food
+        }
+
+        // Tribe population growth (slowly)
+        if (this.health > 100 && Math.random() < 0.0001 * this.technologyLevel) {
+            this.population += 1;
+            logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} cresceu para ${this.population} indivíduos.`);
+        }
+
+        // Tribe can research technologies (placeholder for now)
+        if (Math.random() < 0.00001 * this.technologyLevel) {
+            // logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} está pesquisando uma nova tecnologia!`);
+        }
+
+        // Tribe can build (placeholder for now)
+        if (Math.random() < 0.000005 * this.technologyLevel) {
+            // logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} está construindo algo!`);
+        }
+
+        // Tribe can die if health is too low or population is zero
+        if (this.health <= 0 || this.population <= 0) {
+            logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} foi extinta.`);
+            this.health = 0; // Ensure it's removed
         }
     }
 }
@@ -520,5 +594,6 @@ export const elementClasses = {
     meteor: MeteorElement,
     volcano: VolcanoElement,
     predator: PredatorElement,
+    tribe: TribeElement,
     eraser: (id, x, y) => new EcosystemElement(id, x, y, 'eraser'),
 };

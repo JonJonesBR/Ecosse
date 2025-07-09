@@ -121,3 +121,13 @@ export function resetAchievementProgress() {
     });
     logToObserver("Progresso das conquistas resetado.");
 }
+
+export function saveAchievements() {
+    try {
+        localStorage.setItem('ecosseAchievements', JSON.stringify(achievements));
+        logToObserver("Conquistas salvas.");
+    } catch (e) {
+        console.error("Erro ao salvar conquistas no localStorage:", e);
+        logToObserver("Erro ao salvar conquistas.");
+    }
+}

@@ -1,15 +1,18 @@
 import { initUIDomReferences, showMessage, hideMessageBox, logToObserver, showModal, hideModal } from './utils.js';
 import { init3DScene, updatePlanetAppearance, get3DIntersectionPoint, getCameraState, setCameraState, resetCamera } from './planetRenderer.js';
-import { initSimulationUIReferences, setSimulationConfig, setEcosystemElements, getEcosystemElements, getSimulationConfig, drawEcosystem, startSimulationLoop, pauseSimulationLoop, toggleTimeLapse, setPlacingElement, setElementMultiplier, setCurrentMouse3DPoint, addElementAtPoint, removeElementAtPoint, getElementAtPoint3D, resetSimulation, handleCanvasInteraction } from './simulation.js';
+import { initSimulationUIReferences, setSimulationConfig, setEcosystemElements, getEcosystemElements, getSimulationConfig, drawEcosystem, startSimulationLoop, pauseSimulationLoop, toggleTimeLapse, setPlacingElement, setElementMultiplier, setCurrentMouse3DPoint, addElementAtPoint, removeElementAtPoint, getElementAtPoint3D, resetSimulation, handleCanvasInteraction, blessTribe, curseTribe } from './simulation.js';
 import { saveSimulation, loadSimulation, generateSeed, loadSimulationFromSeed } from './persistence.js';
 import { setupConfigPanelListeners, getCurrentConfig, populateConfigForm } from './config.js';
-import { askGeminiForEcosystemAnalysis } from './geminiApi.js';
+import { askGeminiForEcosystemAnalysis, askGeminiForPlanetStory } from './geminiApi.js';
 import { getAchievements } from './achievements.js'; // NEW IMPORT
 import { getTechnologies, unlockTechnology, getUnlockedTechnologies } from './techTree.js'; // NEW IMPORT
+import { loadAudio, playBackgroundMusic, pauseBackgroundMusic, playSFX } from './audioManager.js'; // NEW IMPORT
+import { scenarios, getScenarioById } from './scenarios.js'; // NEW IMPORT
 
 let leftPanel, rightPanel;
 let useGemini = true;
 let geminiApiKey = "";
+let currentScenario = null; // NEW: Global variable to store the active scenario
 
 function initializeApp() {
     console.log('initializeApp started.');
@@ -27,9 +30,16 @@ function initializeApp() {
         'element-detail-close-btn', 'element-detail-title', 'element-detail-content', 'gemini-api-modal',
         'gemini-api-close-btn', 'gemini-api-key-input', 'save-gemini-key-btn',
         'achievements-btn', 'achievements-modal', 'achievements-close-btn', 'achievements-list',
-        'current-weather',
+        'current-weather', 'current-season-display', // NEW ID
         'tech-tree-btn', 'tech-tree-modal', 'tech-tree-close-btn', 'tech-tree-list',
-        'history-btn', 'history-modal', 'history-close-btn', 'history-log' // NEW IDs
+        'history-btn', 'history-modal', 'history-close-btn', 'history-log', // NEW IDs
+        'scenarios-btn', 'scenarios-modal', 'scenarios-close-btn', 'scenarios-list', // NEW Scenario IDs
+        'tribe-interaction-modal', 'tribe-interaction-close-btn', 'tribe-interaction-title',
+        'bless-tribe-btn', 'curse-tribe-btn', // NEW Tribe Interaction IDs
+        'player-energy-display', // NEW: Player energy display
+        'planet-story', // NEW: Planet story display
+        'victory-modal', 'victory-title', 'victory-message', 'victory-restart-btn', 'victory-main-menu-btn', // NEW Victory Modal IDs
+        'failure-modal', 'failure-title', 'failure-message', 'failure-restart-btn', 'failure-main-menu-btn' // NEW Failure Modal IDs
     ];
     ids.forEach(id => {
         const camelCaseId = id.replace(/-(\w)/g, (_, c) => c.toUpperCase());
@@ -46,7 +56,7 @@ function initializeApp() {
 
     initUIDomReferences(refs.messageBox, refs.messageText, refs.observerLog, refs.messageOkBtn);
     
-    initSimulationUIReferences(refs.ecosystemStability, refs.ecosystemBiodiversity, refs.ecosystemResources, refs.geminiInsights);
+    initSimulationUIReferences(refs.ecosystemStability, refs.ecosystemBiodiversity, refs.ecosystemResources, refs.geminiInsights, refs.playerEnergyDisplay, refs.currentSeasonDisplay, showModal, hideModal);
 
     const savedApiKey = localStorage.getItem('geminiApiKey');
     if (refs.geminiApiKeyInput && savedApiKey) {
@@ -87,11 +97,28 @@ function initializeApp() {
     setSimulationConfig(initialConfig);
     setEcosystemElements(loadedElements);
 
+    // Generate and display planet story
+    if (useGemini && geminiApiKey) {
+        refs.planetStory.textContent = 'Gerando história...';
+        askGeminiForPlanetStory(initialConfig, geminiApiKey, logToObserver)
+            .then(story => {
+                if (story) {
+                    refs.planetStory.textContent = story;
+                } else {
+                    refs.planetStory.textContent = 'Não foi possível gerar a história do planeta.';
+                }
+            });
+    } else {
+        refs.planetStory.textContent = 'Conecte-se ao Gemini para gerar a história do planeta.';
+    }
+
     const canvas = init3DScene(refs.threeJsCanvasContainer, initialConfig);
     if (loadedCameraState) setCameraState(loadedCameraState); else resetCamera(initialConfig);
     
     drawEcosystem();
+    loadAudio(); // Load all audio files
     startSimulationLoop(useGemini, geminiApiKey);
+    playBackgroundMusic(); // Start background music
     setupEventListeners(refs, canvas);
 }
 
@@ -248,18 +275,51 @@ function setupEventListeners(refs, canvas) {
         console.log('History modal closed.');
     });
 
+    // NEW: Scenarios Button and Modal
+    refs.scenariosBtn.addEventListener('click', () => {
+        populateScenariosModal(refs.scenariosList);
+        showModal(refs.scenariosModal);
+        console.log('Scenarios modal opened.');
+    });
+    refs.scenariosCloseBtn.addEventListener('click', () => {
+        hideModal(refs.scenariosModal);
+        console.log('Scenarios modal closed.');
+    });
+
     // Element Detail Modal
     refs.elementDetailCloseBtn.addEventListener('click', () => {
         hideModal(refs.elementDetailModal);
         console.log('Element detail modal closed.');
     });
 
+    // NEW: Tribe Interaction Modal
+    refs.tribeInteractionCloseBtn.addEventListener('click', () => {
+        hideModal(refs.tribeInteractionModal);
+        console.log('Tribe interaction modal closed.');
+    });
+
+    let selectedTribe = null; // To store the tribe being interacted with
+
+    refs.blessTribeBtn.addEventListener('click', () => {
+        if (selectedTribe) {
+            blessTribe(selectedTribe);
+            hideModal(refs.tribeInteractionModal);
+        }
+    });
+
+    refs.curseTribeBtn.addEventListener('click', () => {
+        if (selectedTribe) {
+            curseTribe(selectedTribe);
+            hideModal(refs.tribeInteractionModal);
+        }
+    });
+
     // Interação com o Canvas
     
     if(canvas){
         console.log('Canvas element right before addEventListener calls:', canvas);
-        canvas.addEventListener('mousemove', (e) => handleCanvasInteraction(e, false, useGemini, geminiApiKey, showElementDetails, canvas));
-        canvas.addEventListener('mousedown', (e) => handleCanvasInteraction(e, true, useGemini, geminiApiKey, showElementDetails, canvas));
+        canvas.addEventListener('mousemove', (e) => handleCanvasInteraction(e, false, useGemini, geminiApiKey, showElementDetails, showTribeInteractionModal, canvas));
+        canvas.addEventListener('mousedown', (e) => handleCanvasInteraction(e, true, useGemini, geminiApiKey, showElementDetails, showTribeInteractionModal, canvas));
         canvas.addEventListener('mouseleave', () => setCurrentMouse3DPoint(null));
         console.log('Canvas event listeners attached.');
     }
@@ -293,6 +353,44 @@ function setupEventListeners(refs, canvas) {
         refs.elementDetailContent.innerHTML = contentHtml;
         showModal(refs.elementDetailModal);
     }
+
+    function showTribeInteractionModal(tribe) {
+        selectedTribe = tribe;
+        refs.tribeInteractionTitle.textContent = `Interagir com Tribo (ID: ${tribe.id.toFixed(0)})`;
+        showModal(refs.tribeInteractionModal);
+    }
+
+    function blessTribe(tribe) {
+        // This will be implemented in simulation.js
+        console.log(`Blessing tribe ${tribe.id}`);
+    }
+
+    function curseTribe(tribe) {
+        // This will be implemented in simulation.js
+        console.log(`Cursing tribe ${tribe.id}`);
+    }
+
+    // NEW: Victory/Failure Modals
+    refs.victoryRestartBtn.addEventListener('click', () => {
+        hideModal(refs.victoryModal);
+        resetSimulation(currentScenario ? currentScenario.id : null); // Restart current scenario or default sandbox
+    });
+
+    refs.victoryMainMenuBtn.addEventListener('click', () => {
+        hideModal(refs.victoryModal);
+        window.location.reload(); // Reload to go back to main menu/default sandbox
+    });
+
+    refs.failureRestartBtn.addEventListener('click', () => {
+        hideModal(refs.failureModal);
+        resetSimulation(currentScenario ? currentScenario.id : null); // Restart current scenario or default sandbox
+    });
+
+    refs.failureMainMenuBtn.addEventListener('click', () => {
+        hideModal(refs.failureModal);
+        window.location.reload(); // Reload to go back to main menu/default sandbox
+    });
+
 }
 
 function populateAchievementsModal(achievementsListElement) {
@@ -389,6 +487,29 @@ function getAchievementProgressText(achievement) {
         default:
             return '';
     }
+}
+
+function populateScenariosModal(scenariosListElement) {
+    scenariosListElement.innerHTML = ''; // Clear previous list
+    scenarios.forEach(scenario => {
+        const scenarioDiv = document.createElement('div');
+        scenarioDiv.classList.add('scenario-item');
+        scenarioDiv.innerHTML = `
+            <h3>${scenario.name}</h3>
+            <p>${scenario.description}</p>
+            <button class="start-scenario-btn" data-scenario-id="${scenario.id}">Iniciar Cenário</button>
+        `;
+        scenariosListElement.appendChild(scenarioDiv);
+    });
+
+    scenariosListElement.querySelectorAll('.start-scenario-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const scenarioId = event.target.dataset.scenarioId;
+            hideModal(refs.scenariosModal);
+            currentScenario = getScenarioById(scenarioId); // Set the global currentScenario
+            resetSimulation(scenarioId); // Pass scenarioId to resetSimulation
+        });
+    });
 }
 
 let currentWeatherSpan; // Declare a variable to hold the span reference

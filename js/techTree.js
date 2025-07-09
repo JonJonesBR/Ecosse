@@ -29,6 +29,861 @@ const technologies = {
         unlocked: false,
         prerequisites: [],
         effect: { type: 'creature_energy_reduction', value: 0.15 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
+    },
+    'basic_tools': {
+        id: 'basic_tools',
+        name: 'Ferramentas Básicas',
+        description: 'Tribos coletam recursos 10% mais eficientemente.',
+        cost: { iron: 20, silicon: 10 },
+        unlocked: false,
+        prerequisites: [], // No prerequisites for now, but could require a tribe to exist
+        effect: { type: 'tribe_resource_efficiency', value: 0.1 }
     }
     // Add more technologies here
 };
