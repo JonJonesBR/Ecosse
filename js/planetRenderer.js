@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { elementDefinitions, ecosystemSizes } from './utils.js';
+import { SimplexNoise } from './simplexNoise.js';
 
 let scene, camera, renderer, controls;
 let planetMesh, starField, ghostElementMesh, rainParticles, cloudMesh, waterMesh;
@@ -143,10 +144,16 @@ function createPlanet(config) {
 
         // Update material properties
         const newTexture = new THREE.CanvasTexture(generatePlanetTexture(config));
+        const newBumpMap = new THREE.CanvasTexture(generateBumpMapTexture(config));
         if (planetMesh.material.map) {
             planetMesh.material.map.dispose(); // Dispose old texture
         }
+        if (planetMesh.material.bumpMap) {
+            planetMesh.material.bumpMap.dispose(); // Dispose old bump map
+        }
         planetMesh.material.map = newTexture;
+        planetMesh.material.bumpMap = newBumpMap;
+        planetMesh.material.bumpScale = 5; // Adjust this value for desired bump intensity
         planetMesh.material.shininess = config.planetType === 'aquatic' ? 100 : 10;
         planetMesh.material.needsUpdate = true; // Important for material changes
     } else {
@@ -154,6 +161,8 @@ function createPlanet(config) {
         const geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
         const material = new THREE.MeshPhongMaterial({
             map: new THREE.CanvasTexture(generatePlanetTexture(config)),
+            bumpMap: new THREE.CanvasTexture(generateBumpMapTexture(config)),
+            bumpScale: 5, // Adjust this value for desired bump intensity
             shininess: config.planetType === 'aquatic' ? 100 : 10
         });
         planetMesh = new THREE.Mesh(geometry, material);
@@ -161,52 +170,75 @@ function createPlanet(config) {
         scene.add(planetMesh);
     }
 
-    // Update or create atmosphere
+    // Update or create atmosphere with ShaderMaterial for rim lighting
     let atmosphere = planetMesh.children.find(child => child.name === 'atmosphere');
-    if (atmosphere) {
-        // Update existing atmosphere material
-        let atmosphereColor = 0xFFFFFF;
-        let atmosphereOpacity = 0.3;
 
-        switch (config.atmosphere) {
-            case 'methane':
-                atmosphereColor = 0xFF4500;
-                atmosphereOpacity = 0.4;
-                break;
-            case 'thin':
-                atmosphereOpacity = 0.1;
-                break;
-            case 'dense':
-                atmosphereOpacity = 0.6;
-                break;
+    // Define GLSL Shaders
+    const vertexShader = `
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+
+        void main() {
+            vNormal = normalize(normalMatrix * normal);
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            vViewPosition = -mvPosition.xyz;
+            gl_Position = projectionMatrix * mvPosition;
         }
-        atmosphere.material.color.set(atmosphereColor);
-        atmosphere.material.opacity = atmosphereOpacity;
+    `;
+
+    const fragmentShader = `
+        uniform vec3 atmosphereColor;
+        uniform float atmosphereDensity;
+        uniform float planetRadius;
+
+        varying vec3 vNormal;
+        varying vec3 vViewPosition;
+
+        void main() {
+            float intensity = pow(atmosphereDensity + dot(vNormal, normalize(vViewPosition)), 2.0);
+            gl_FragColor = vec4(atmosphereColor, clamp(intensity, 0.0, 1.0));
+        }
+    `;
+
+    let atmosphereColor = new THREE.Color(0xFFFFFF);
+    let atmosphereDensity = 0.3;
+
+    switch (config.atmosphere) {
+        case 'methane':
+            atmosphereColor.set(0xFF4500);
+            atmosphereDensity = 0.4;
+            break;
+        case 'thin':
+            atmosphereDensity = 0.1;
+            break;
+        case 'dense':
+            atmosphereDensity = 0.6;
+            break;
+        case 'none': // Add a 'none' option to hide atmosphere
+            atmosphereDensity = 0.0; // Make it fully transparent
+            break;
+    }
+
+    if (atmosphere) {
+        // Update existing atmosphere material uniforms
+        atmosphere.material.uniforms.atmosphereColor.value = atmosphereColor;
+        atmosphere.material.uniforms.atmosphereDensity.value = atmosphereDensity;
+        atmosphere.material.uniforms.planetRadius.value = planetRadius;
         atmosphere.material.needsUpdate = true;
     } else {
-        // Create new atmosphere if it doesn't exist
-        const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
-        let atmosphereColor = 0xFFFFFF;
-        let atmosphereOpacity = 0.3;
-
-        switch (config.atmosphere) {
-            case 'methane':
-                atmosphereColor = 0xFF4500;
-                atmosphereOpacity = 0.4;
-                break;
-            case 'thin':
-                atmosphereOpacity = 0.1;
-                break;
-            case 'dense':
-                atmosphereOpacity = 0.6;
-                break;
-        }
-
-        const atmosphereMaterial = new THREE.MeshBasicMaterial({
-            color: atmosphereColor,
+        // Create new atmosphere mesh if it doesn't exist
+        const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64); // Slightly larger than planet
+        const atmosphereMaterial = new THREE.ShaderMaterial({
+            uniforms: {
+                atmosphereColor: { value: atmosphereColor },
+                atmosphereDensity: { value: atmosphereDensity },
+                planetRadius: { value: planetRadius }
+            },
+            vertexShader: vertexShader,
+            fragmentShader: fragmentShader,
             transparent: true,
-            opacity: atmosphereOpacity,
-            side: THREE.BackSide
+            blending: THREE.AdditiveBlending, // For a glowing effect
+            side: THREE.BackSide // Render the inner surface
         });
         atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
         atmosphere.name = 'atmosphere'; // Name the atmosphere for easy access
@@ -225,55 +257,120 @@ function createPlanet(config) {
     controls.update();
 }
 
+const simplex = new SimplexNoise(); // Initialize Simplex Noise
+
 function generatePlanetTexture(config) {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 256;
+    canvas.width = 1024; // Increased resolution for better detail
+    canvas.height = 512;
     const context = canvas.getContext('2d');
 
-    // Base color
-    let baseColor;
-    switch (config.planetType) {
-        case 'desert': baseColor = '#D2B48C'; break;
-        case 'aquatic': baseColor = '#1E90FF'; break;
-        case 'volcanic': baseColor = '#A0522D'; break;
-        case 'gas': baseColor = '#FFD700'; break;
-        default: baseColor = '#228B22'; break; // Terrestrial
-    }
-    context.fillStyle = baseColor;
-    context.fillRect(0, 0, canvas.width, canvas.height);
+    const waterColor = '#1E90FF'; // DodgerBlue
+    const landColor = '#228B22'; // ForestGreen
+    const desertColor = '#D2B48C'; // Tan
+    const volcanicColor = '#A0522D'; // Sienna
+    const gasColor1 = '#FFD700'; // Gold
+    const gasColor2 = '#FFDEAD'; // NavajoWhite
 
-    // Add features
-    for (let i = 0; i < 3000; i++) {
-        const x = Math.random() * canvas.width;
-        const y = Math.random() * canvas.height;
-        const radius = Math.random() * 1.5;
-        let color;
+    const scale = 0.02; // Adjust for continent size
+    const octaves = 4;
+    const persistence = 0.5;
+    const lacunarity = 2.0;
+    const threshold = 0.1; // Adjust for land/water ratio
 
-        switch (config.planetType) {
-            case 'terrestrial':
-                color = Math.random() > 0.2 ? '#1E90FF' : '#FFFFFF'; // Water and clouds
-                break;
-            case 'desert':
-                color = '#A0522D'; // Darker sand
-                break;
-            case 'aquatic':
-                color = '#FFFFFF'; // Clouds
-                break;
-            case 'volcanic':
-                color = Math.random() > 0.1 ? '#FF4500' : '#8B0000'; // Lava and rock
-                break;
-            case 'gas':
-                color = Math.random() > 0.5 ? '#FFA500' : '#FFDEAD'; // Gas bands
-                break;
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            let noiseValue = 0;
+            let frequency = 1;
+            let amplitude = 1;
+
+            for (let i = 0; i < octaves; i++) {
+                noiseValue += simplex.noise2D(x * scale * frequency, y * scale * frequency) * amplitude;
+                frequency *= lacunarity;
+                amplitude *= persistence;
+            }
+
+            // Normalize noiseValue to be between 0 and 1
+            noiseValue = (noiseValue + 1) / 2;
+
+            let color;
+            switch (config.planetType) {
+                case 'terrestrial':
+                    if (noiseValue < threshold) {
+                        color = waterColor;
+                    } else {
+                        color = landColor;
+                    }
+                    break;
+                case 'desert':
+                    if (noiseValue < threshold + 0.1) { // More land for desert
+                        color = desertColor;
+                    } else {
+                        color = waterColor; // Still some water
+                    }
+                    break;
+                case 'aquatic':
+                    color = waterColor; // Mostly water
+                    break;
+                case 'volcanic':
+                    if (noiseValue < threshold) {
+                        color = waterColor;
+                    } else {
+                        color = volcanicColor;
+                    }
+                    break;
+                case 'gas':
+                    // For gas giants, use noise to create bands
+                    const bandNoise = simplex.noise2D(0, y * 0.05); // Noise along y-axis for bands
+                    if (bandNoise > 0) {
+                        color = gasColor1;
+                    } else {
+                        color = gasColor2;
+                    }
+                    break;
+                default:
+                    color = '#000000'; // Fallback
+                    break;
+            }
+            context.fillStyle = color;
+            context.fillRect(x, y, 1, 1);
         }
-
-        context.fillStyle = color;
-        context.beginPath();
-        context.arc(x, y, radius, 0, Math.PI * 2);
-        context.fill();
     }
+    return canvas;
+}
 
+function generateBumpMapTexture(config) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const context = canvas.getContext('2d');
+
+    const scale = 0.05; // Adjust for mountain size
+    const octaves = 6;
+    const persistence = 0.5;
+    const lacunarity = 2.0;
+
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            let noiseValue = 0;
+            let frequency = 1;
+            let amplitude = 1;
+
+            for (let i = 0; i < octaves; i++) {
+                noiseValue += simplex.noise2D(x * scale * frequency, y * scale * frequency) * amplitude;
+                frequency *= lacunarity;
+                amplitude *= persistence;
+            }
+
+            // Normalize noiseValue to be between 0 and 1
+            noiseValue = (noiseValue + 1) / 2;
+
+            // For bump map, we want values from 0 to 255 (grayscale)
+            const gray = Math.floor(noiseValue * 255);
+            context.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+            context.fillRect(x, y, 1, 1);
+        }
+    }
     return canvas;
 }
 
