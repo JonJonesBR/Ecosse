@@ -7,6 +7,8 @@ import { trackElementCreated, trackSimulationCycle, checkStabilityAchievement, r
 import { updateWeatherDisplay } from './main.js'; // NEW IMPORT
 import { playSFX } from './audioManager.js'; // NEW IMPORT
 import { getScenarioById } from './scenarios.js'; // NEW IMPORT
+import { publish, subscribe, EventTypes } from './systems/eventSystem.js'; // NEW: Event system
+import { info, warning, error } from './systems/loggingSystem.js'; // NEW: Enhanced logging
 
 // Variáveis de estado do módulo
 let ecosystemElements = [];
@@ -100,8 +102,16 @@ function updateSimulation(useGemini, geminiApiKey) {
 
     if (newSeason !== currentSeason) {
         currentSeason = newSeason;
+        // Publish season change event
+        publish(EventTypes.SEASON_CHANGED, { 
+            season: currentSeason,
+            previousSeason: newSeason,
+            annualCycleTime
+        });
+        
         logToObserver(`A estação mudou para: ${currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1)}`);
         showMessage(`A estação mudou para: ${currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1)}`);
+        updateSeasonDisplay();
     }
 
     // Apply seasonal effects to simulation config (or a temporary config for this tick)
@@ -169,10 +179,39 @@ function updateSimulation(useGemini, geminiApiKey) {
     
     // Adiciona novos elementos e remove os mortos
     if (simulationState.newElements.length > 0) {
+        // Publish events for each new element
+        simulationState.newElements.forEach(element => {
+            publish(EventTypes.ELEMENT_CREATED, {
+                id: element.id,
+                type: element.type,
+                x: element.x,
+                y: element.y,
+                emoji: element.emoji,
+                size: element.size
+            });
+        });
+        
         ecosystemElements.push(...simulationState.newElements);
         hasChanges = true;
     }
+    
     const newLength = ecosystemElements.length;
+    
+    // Track elements that will be removed
+    const elementsToRemove = ecosystemElements.filter(el => el.health <= 0);
+    
+    // Publish events for each removed element
+    elementsToRemove.forEach(element => {
+        publish(EventTypes.ELEMENT_REMOVED, {
+            id: element.id,
+            type: element.type,
+            x: element.x,
+            y: element.y,
+            emoji: element.emoji,
+            cause: 'health_depleted'
+        });
+    });
+    
     ecosystemElements = ecosystemElements.filter(el => el.health > 0);
     if(newLength !== ecosystemElements.length) hasChanges = true;
     

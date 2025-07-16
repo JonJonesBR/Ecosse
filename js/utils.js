@@ -1,5 +1,7 @@
 import { get3DPositionOnPlanet, triggerVolcanoEruption, triggerMeteorImpact } from './planetRenderer.js';
 import * as THREE from 'three';
+import { publish, EventTypes } from './systems/eventSystem.js';
+import { log, info, warning, error, LogLevel } from './systems/loggingSystem.js';
 
 // js/utils.js
 let messageBox, messageText, observerLogDiv;
@@ -12,12 +14,22 @@ export function initUIDomReferences(msgBox, msgText, obsLog, okBtn) {
     if (okBtn) {
         okBtn.addEventListener('click', hideMessageBox);
     }
+    
+    // Initialize the logging system with the observer log div
+    if (obsLog) {
+        import('./systems/loggingSystem.js').then(loggingSystem => {
+            loggingSystem.initLoggingSystem(obsLog);
+        });
+    }
 }
 
 export function showMessage(message) {
     if (messageText && messageBox) {
         messageText.textContent = message;
         messageBox.style.display = 'block';
+        
+        // Publish UI notification event
+        publish(EventTypes.UI_NOTIFICATION, { message });
     }
 }
 
@@ -28,6 +40,10 @@ export function hideMessageBox() {
 }
 
 export function logToObserver(message) {
+    // Use the new logging system
+    info(message);
+    
+    // Keep the old implementation for backward compatibility
     if (observerLogDiv) {
         const p = document.createElement('p');
         p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
@@ -43,7 +59,16 @@ export function logToObserver(message) {
 }
 
 export function getLogHistory() {
-    return logHistory;
+    // Try to use the new logging system if available
+    try {
+        const loggingSystem = require('./systems/loggingSystem.js');
+        return loggingSystem.getLogEntries().map(entry => 
+            `[${entry.formattedTime}] ${entry.message}`
+        );
+    } catch (e) {
+        // Fall back to the old log history
+        return logHistory;
+    }
 }
 
 export function showModal(modalElement) {

@@ -2,6 +2,17 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { elementDefinitions, ecosystemSizes } from './utils.js';
 import { SimplexNoise } from './simplexNoise.js';
+import { 
+    shaderManager, 
+    createAtmosphereMaterial, 
+    createWaterMaterial,
+    createRainMaterial,
+    createSnowMaterial,
+    createCloudMaterial,
+    createRainGeometry,
+    createSnowGeometry
+} from './shaders/index.js';
+import { particleSystem, ParticleTypes } from './systems/particleSystem.js';
 
 let scene, camera, renderer, controls;
 let planetMesh, starField, ghostElementMesh, rainParticles, cloudMesh, waterMesh;
@@ -94,24 +105,14 @@ export function init3DScene(container, initialConfig) {
             // Adjust ambient light intensity based on time of day
             ambientLight.intensity = 0.8 + (Math.sin(dayCycleTime) + 1) * 0.75; // Brighter during day, dimmer at night (adjusted for brighter night)
         }
-
-        // Animate rain particles
-        if (rainParticles && rainParticles.visible) {
-            rainParticles.geometry.attributes.position.array.forEach((p, i) => {
-                if (i % 3 === 1) { // Y-coordinate
-                    rainParticles.geometry.attributes.position.array[i] -= 2; // Fall speed
-                    if (rainParticles.geometry.attributes.position.array[i] < -250) {
-                        rainParticles.geometry.attributes.position.array[i] = 250; // Reset to top
-                    }
-                }
-            });
-            rainParticles.geometry.attributes.position.needsUpdate = true;
+        
+        // Update all custom shaders via shader manager
+        if (shaderManager) {
+            shaderManager.update();
         }
-
-        // Animate clouds
-        if (cloudMesh) {
-            cloudMesh.rotation.y += 0.0005;
-        }
+        
+        // No need to manually animate rain particles or clouds anymore
+        // as they're now handled by the shader manager
 
         renderer.render(scene, camera);
     };
@@ -170,78 +171,92 @@ function createPlanet(config) {
         scene.add(planetMesh);
     }
 
-    // Update or create atmosphere with ShaderMaterial for rim lighting
+    // Update or create atmosphere with enhanced atmosphere shader
     let atmosphere = planetMesh.children.find(child => child.name === 'atmosphere');
 
-    // Define GLSL Shaders
-    const vertexShader = `
-        varying vec3 vNormal;
-        varying vec3 vViewPosition;
-
-        void main() {
-            vNormal = normalize(normalMatrix * normal);
-            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-            vViewPosition = -mvPosition.xyz;
-            gl_Position = projectionMatrix * mvPosition;
-        }
-    `;
-
-    const fragmentShader = `
-        uniform vec3 atmosphereColor;
-        uniform float atmosphereDensity;
-        uniform float planetRadius;
-
-        varying vec3 vNormal;
-        varying vec3 vViewPosition;
-
-        void main() {
-            float intensity = pow(atmosphereDensity + dot(vNormal, normalize(vViewPosition)), 2.0);
-            gl_FragColor = vec4(atmosphereColor, clamp(intensity, 0.0, 1.0));
-        }
-    `;
-
-    let atmosphereColor = new THREE.Color(0xFFFFFF);
+    // Configure atmosphere options based on planet type
+    let atmosphereColor = new THREE.Color(0x88AAFF);
+    let atmosphereHighlightColor = new THREE.Color(0xFFFFFF);
     let atmosphereDensity = 0.3;
+    let atmosphereThickness = planetRadius * 0.05;
+    let scatteringStrength = 1.0;
 
+    // Adjust atmosphere based on planet type
+    switch (config.planetType) {
+        case 'terrestrial':
+            atmosphereColor = new THREE.Color(0x88AAFF); // Blue-ish
+            break;
+        case 'desert':
+            atmosphereColor = new THREE.Color(0xFFD580); // Light orange
+            scatteringStrength = 1.2;
+            break;
+        case 'aquatic':
+            atmosphereColor = new THREE.Color(0x00BFFF); // Deep blue
+            scatteringStrength = 0.8;
+            break;
+        case 'volcanic':
+            atmosphereColor = new THREE.Color(0xFF4500); // Red-orange
+            atmosphereHighlightColor = new THREE.Color(0xFFCC00);
+            scatteringStrength = 1.5;
+            break;
+        case 'gas':
+            atmosphereColor = new THREE.Color(0xFFD700); // Gold
+            atmosphereHighlightColor = new THREE.Color(0xFFA500);
+            scatteringStrength = 2.0;
+            atmosphereThickness = planetRadius * 0.1; // Thicker atmosphere for gas giants
+            break;
+    }
+
+    // Adjust based on atmosphere type
     switch (config.atmosphere) {
         case 'methane':
-            atmosphereColor.set(0xFF4500);
+            atmosphereColor = new THREE.Color(0xFF4500); // Orange-red
             atmosphereDensity = 0.4;
+            scatteringStrength *= 1.2;
             break;
         case 'thin':
             atmosphereDensity = 0.1;
+            scatteringStrength *= 0.7;
             break;
         case 'dense':
             atmosphereDensity = 0.6;
+            scatteringStrength *= 1.3;
+            atmosphereThickness = planetRadius * 0.08; // Thicker for dense atmosphere
             break;
-        case 'none': // Add a 'none' option to hide atmosphere
-            atmosphereDensity = 0.0; // Make it fully transparent
+        case 'none':
+            atmosphereDensity = 0.0; // Invisible
             break;
     }
 
     if (atmosphere) {
         // Update existing atmosphere material uniforms
         atmosphere.material.uniforms.atmosphereColor.value = atmosphereColor;
+        atmosphere.material.uniforms.atmosphereHighlightColor.value = atmosphereHighlightColor;
         atmosphere.material.uniforms.atmosphereDensity.value = atmosphereDensity;
         atmosphere.material.uniforms.planetRadius.value = planetRadius;
+        atmosphere.material.uniforms.atmosphereThickness.value = atmosphereThickness;
+        atmosphere.material.uniforms.scatteringStrength.value = scatteringStrength;
         atmosphere.material.needsUpdate = true;
+        
+        // Update geometry if planet size changed
+        if (atmosphere.geometry.parameters.radius !== planetRadius * 1.05) {
+            atmosphere.geometry.dispose();
+            atmosphere.geometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
+        }
     } else {
-        // Create new atmosphere mesh if it doesn't exist
-        const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64); // Slightly larger than planet
-        const atmosphereMaterial = new THREE.ShaderMaterial({
-            uniforms: {
-                atmosphereColor: { value: atmosphereColor },
-                atmosphereDensity: { value: atmosphereDensity },
-                planetRadius: { value: planetRadius }
-            },
-            vertexShader: vertexShader,
-            fragmentShader: fragmentShader,
-            transparent: true,
-            blending: THREE.AdditiveBlending, // For a glowing effect
-            side: THREE.BackSide // Render the inner surface
+        // Create new atmosphere mesh with enhanced shader
+        const atmosphereGeometry = new THREE.SphereGeometry(planetRadius * 1.05, 64, 64);
+        const atmosphereMaterial = createAtmosphereMaterial({
+            atmosphereColor: atmosphereColor,
+            atmosphereHighlightColor: atmosphereHighlightColor,
+            atmosphereDensity: atmosphereDensity,
+            planetRadius: planetRadius,
+            atmosphereThickness: atmosphereThickness,
+            scatteringStrength: scatteringStrength
         });
+        
         atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
-        atmosphere.name = 'atmosphere'; // Name the atmosphere for easy access
+        atmosphere.name = 'atmosphere';
         planetMesh.add(atmosphere);
     }
 
@@ -427,43 +442,70 @@ function createClouds(config) {
             cloudMesh.geometry.dispose();
             cloudMesh.geometry = new THREE.SphereGeometry(planetRadius * 1.02, 64, 64);
         }
-        // Update material (texture and opacity)
-        cloudMesh.material.map = new THREE.CanvasTexture(generateCloudTexture());
-        cloudMesh.material.opacity = 0.4;
-        cloudMesh.material.needsUpdate = true;
+        
+        // Update material with custom cloud shader
+        if (cloudMesh.material.type !== 'ShaderMaterial') {
+            // Replace with custom shader material if not already using it
+            cloudMesh.material.dispose();
+            cloudMesh.material = createCloudMaterial({
+                windSpeed: 1.0,
+                cloudDensity: 0.7,
+                cloudTexture: new THREE.CanvasTexture(generateCloudTexture())
+            });
+        } else {
+            // Update existing shader material
+            cloudMesh.material.uniforms.cloudTexture.value = new THREE.CanvasTexture(generateCloudTexture());
+            cloudMesh.material.needsUpdate = true;
+        }
     } else {
         const cloudGeometry = new THREE.SphereGeometry(planetRadius * 1.02, 64, 64);
-        const cloudMaterial = new THREE.MeshPhongMaterial({
-            map: new THREE.CanvasTexture(generateCloudTexture()),
-            transparent: true,
-            opacity: 0.4,
-            blending: THREE.AdditiveBlending,
+        const cloudMaterial = createCloudMaterial({
+            windSpeed: 1.0,
+            cloudDensity: 0.7,
+            cloudTexture: new THREE.CanvasTexture(generateCloudTexture())
         });
         cloudMesh = new THREE.Mesh(cloudGeometry, cloudMaterial);
         scene.add(cloudMesh);
     }
+    
+    // Initialize shader manager if not already done
+    if (scene && !shaderManager.scene) {
+        shaderManager.init(scene, {
+            planetType: config.planetType,
+            atmosphereType: config.atmosphere,
+            weatherType: 'clear'
+        });
+        
+        // Initialize particle system if not already done
+        if (particleSystem && !particleSystem.scene) {
+            particleSystem.init(scene);
+        }
+    }
 }
 
 function createRainParticles() {
-    const particleCount = 1000;
-    const particles = new THREE.BufferGeometry();
-    const pMaterial = new THREE.PointsMaterial({
-        color: 0xADD8E6, // Light blue
-        size: 1,
-        transparent: true,
-        opacity: 0.6,
-        blending: THREE.AdditiveBlending
+    // Create rain particles with custom shader
+    const rainGeometry = createRainGeometry(1000, 500);
+    const rainMaterial = createRainMaterial({
+        rainSpeed: 20.0,
+        turbulence: 5.0
     });
-
-    const pArray = new Float32Array(particleCount * 3);
-    for (let i = 0; i < particleCount * 3; i++) {
-        pArray[i] = (Math.random() - 0.5) * 500; // Spread particles in a cube
-    }
-    particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
-
-    rainParticles = new THREE.Points(particles, pMaterial);
+    
+    rainParticles = new THREE.Points(rainGeometry, rainMaterial);
     rainParticles.visible = false; // Hidden by default
     scene.add(rainParticles);
+    
+    // Create snow particles with custom shader (initially hidden)
+    const snowGeometry = createSnowGeometry(800, 500);
+    const snowMaterial = createSnowMaterial({
+        snowSpeed: 5.0,
+        turbulence: 8.0
+    });
+    
+    const snowParticles = new THREE.Points(snowGeometry, snowMaterial);
+    snowParticles.visible = false;
+    snowParticles.name = 'snowParticles';
+    scene.add(snowParticles);
 }
 
 function createMeshForElement(element) {
@@ -519,93 +561,147 @@ let volcanoSmokeParticles = null;
 let meteorExplosionParticles = null;
 
 export function triggerVolcanoEruption(position) {
-    if (volcanoSmokeParticles) scene.remove(volcanoSmokeParticles);
+    // Use the advanced particle system instead of the basic one
+    if (particleSystem) {
+        // Create fire and smoke effect at the volcano position
+        particleSystem.createEffect('fireAndSmoke', position, {
+            scale: 2.0, // Larger scale for more dramatic effect
+            duration: 3.0 // Longer duration for volcano eruption
+        });
+        
+        // Add additional smoke particles with delay for a more realistic eruption
+        setTimeout(() => {
+            particleSystem.spawnParticles(ParticleTypes.SMOKE, position, {
+                scale: 2.5,
+                duration: 5.0
+            });
+        }, 500);
+        
+        // Add some sparks/embers
+        setTimeout(() => {
+            particleSystem.spawnParticles(ParticleTypes.SPARKLE, position, {
+                scale: 1.0,
+                duration: 2.0
+            });
+        }, 200);
+    } else {
+        // Fallback to old implementation if particle system is not available
+        if (volcanoSmokeParticles) scene.remove(volcanoSmokeParticles);
 
-    const particleCount = 500;
-    const particles = new THREE.BufferGeometry();
-    const pArray = new Float32Array(particleCount * 3);
+        const particleCount = 500;
+        const particles = new THREE.BufferGeometry();
+        const pArray = new Float32Array(particleCount * 3);
 
-    for (let i = 0; i < particleCount * 3; i += 3) {
-        pArray[i] = position.x + (Math.random() - 0.5) * 20;
-        pArray[i + 1] = position.y + (Math.random() - 0.5) * 20;
-        pArray[i + 2] = position.z + (Math.random() - 0.5) * 20;
-    }
-    particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
-
-    const pMaterial = new THREE.PointsMaterial({
-        color: 0x808080, // Grey smoke
-        size: 5,
-        transparent: true,
-        opacity: 0.8,
-        blending: THREE.AdditiveBlending
-    });
-
-    volcanoSmokeParticles = new THREE.Points(particles, pMaterial);
-    scene.add(volcanoSmokeParticles);
-
-    // Animate smoke for a short duration
-    let opacity = 0.8;
-    const animateSmoke = () => {
-        if (volcanoSmokeParticles) {
-            opacity -= 0.02;
-            volcanoSmokeParticles.material.opacity = opacity;
-            volcanoSmokeParticles.scale.multiplyScalar(1.05);
-            if (opacity > 0) {
-                requestAnimationFrame(animateSmoke);
-            } else {
-                scene.remove(volcanoSmokeParticles);
-                volcanoSmokeParticles.geometry.dispose();
-                volcanoSmokeParticles.material.dispose();
-                volcanoSmokeParticles = null;
-            }
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            pArray[i] = position.x + (Math.random() - 0.5) * 20;
+            pArray[i + 1] = position.y + (Math.random() - 0.5) * 20;
+            pArray[i + 2] = position.z + (Math.random() - 0.5) * 20;
         }
-    };
-    animateSmoke();
+        particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
+
+        const pMaterial = new THREE.PointsMaterial({
+            color: 0x808080, // Grey smoke
+            size: 5,
+            transparent: true,
+            opacity: 0.8,
+            blending: THREE.AdditiveBlending
+        });
+
+        volcanoSmokeParticles = new THREE.Points(particles, pMaterial);
+        scene.add(volcanoSmokeParticles);
+
+        // Animate smoke for a short duration
+        let opacity = 0.8;
+        const animateSmoke = () => {
+            if (volcanoSmokeParticles) {
+                opacity -= 0.02;
+                volcanoSmokeParticles.material.opacity = opacity;
+                volcanoSmokeParticles.scale.multiplyScalar(1.05);
+                if (opacity > 0) {
+                    requestAnimationFrame(animateSmoke);
+                } else {
+                    scene.remove(volcanoSmokeParticles);
+                    volcanoSmokeParticles.geometry.dispose();
+                    volcanoSmokeParticles.material.dispose();
+                    volcanoSmokeParticles = null;
+                }
+            }
+        };
+        animateSmoke();
+    }
 }
 
 export function triggerMeteorImpact(position) {
-    if (meteorExplosionParticles) scene.remove(meteorExplosionParticles);
+    // Use the advanced particle system if available
+    if (particleSystem) {
+        // Create explosion effect at the impact position
+        particleSystem.createEffect('explosion', position, {
+            scale: 3.0, // Large scale for dramatic effect
+            duration: 2.0 // Short duration for explosive impact
+        });
+        
+        // Add dust particles with slight delay
+        setTimeout(() => {
+            particleSystem.spawnParticles(ParticleTypes.DUST, position, {
+                scale: 4.0,
+                duration: 4.0
+            });
+        }, 200);
+        
+        // Add fire particles
+        setTimeout(() => {
+            particleSystem.spawnParticles(ParticleTypes.FIRE, position, {
+                scale: 2.0,
+                duration: 3.0
+            });
+        }, 100);
+    } else {
+        // Fallback to old implementation if particle system is not available
+        if (meteorExplosionParticles) scene.remove(meteorExplosionParticles);
 
-    const particleCount = 1000;
-    const particles = new THREE.BufferGeometry();
-    const pArray = new Float32Array(particleCount * 3);
+        const particleCount = 1000;
+        const particles = new THREE.BufferGeometry();
+        const pArray = new Float32Array(particleCount * 3);
 
-    for (let i = 0; i < particleCount * 3; i += 3) {
-        pArray[i] = position.x + (Math.random() - 0.5) * 50;
-        pArray[i + 1] = position.y + (Math.random() - 0.5) * 50;
-        pArray[i + 2] = position.z + (Math.random() - 0.5) * 50;
-    }
-    particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
-
-    const pMaterial = new THREE.PointsMaterial({
-        color: 0xFF4500, // Orange-red explosion
-        size: 10,
-        transparent: true,
-        opacity: 1.0,
-        blending: THREE.AdditiveBlending
-    });
-
-    meteorExplosionParticles = new THREE.Points(particles, pMaterial);
-    scene.add(meteorExplosionParticles);
-
-    // Animate explosion for a short duration
-    let opacity = 1.0;
-    const animateExplosion = () => {
-        if (meteorExplosionParticles) {
-            opacity -= 0.05;
-            meteorExplosionParticles.material.opacity = opacity;
-            meteorExplosionParticles.scale.multiplyScalar(1.1);
-            if (opacity > 0) {
-                requestAnimationFrame(animateExplosion);
-            } else {
-                scene.remove(meteorExplosionParticles);
-                meteorExplosionParticles.geometry.dispose();
-                meteorExplosionParticles.material.dispose();
-                meteorExplosionParticles = null;
-            }
+        for (let i = 0; i < particleCount * 3; i += 3) {
+            pArray[i] = position.x + (Math.random() - 0.5) * 50;
+            pArray[i + 1] = position.y + (Math.random() - 0.5) * 50;
+            pArray[i + 2] = position.z + (Math.random() - 0.5) * 50;
         }
-    };
-    animateExplosion();
+        particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
+
+        const pMaterial = new THREE.PointsMaterial({
+            color: 0xFF4500, // Orange-red explosion
+            size: 10,
+            transparent: true,
+            opacity: 1.0,
+            blending: THREE.AdditiveBlending
+        });
+
+        meteorExplosionParticles = new THREE.Points(particles, pMaterial);
+        scene.add(meteorExplosionParticles);
+
+        // Animate explosion for a short duration
+        let opacity = 1.0;
+        const animateExplosion = () => {
+            if (meteorExplosionParticles) {
+                opacity -= 0.05;
+                meteorExplosionParticles.material.opacity = opacity;
+                meteorExplosionParticles.scale.multiplyScalar(1.1);
+                if (opacity > 0) {
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    scene.remove(meteorExplosionParticles);
+                    meteorExplosionParticles.geometry.dispose();
+                    meteorExplosionParticles.material.dispose();
+                    meteorExplosionParticles = null;
+                }
+            }
+        };
+        animateExplosion();
+    }
+    
+    // Create crater regardless of which particle system is used
     createCrater(position, 50); // Create a crater with radius 50 at the impact position
 }
 

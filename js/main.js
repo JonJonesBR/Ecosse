@@ -8,14 +8,46 @@ import { getAchievements } from './achievements.js'; // NEW IMPORT
 import { getTechnologies, unlockTechnology, getUnlockedTechnologies } from './techTree.js'; // NEW IMPORT
 import { loadAudio, playBackgroundMusic, pauseBackgroundMusic, playSFX } from './audioManager.js'; // NEW IMPORT
 import { scenarios, getScenarioById } from './scenarios.js'; // NEW IMPORT
+import { subscribe, EventTypes } from './systems/eventSystem.js'; // NEW: Event system
+import { initLoggingSystem, info, warning } from './systems/loggingSystem.js'; // NEW: Enhanced logging
 
 let leftPanel, rightPanel;
 let useGemini = true;
 let geminiApiKey = "";
 let currentScenario = null; // NEW: Global variable to store the active scenario
 
+/**
+ * Set up event subscriptions for the UI
+ * This function subscribes to events from the event system
+ */
+function setupEventSubscriptions() {
+    console.log('Setting up event subscriptions...');
+    
+    // Subscribe to weather change events to update the UI
+    subscribe(EventTypes.WEATHER_CHANGED, (data) => {
+        updateWeatherDisplay(data);
+    });
+    
+    // Subscribe to other events as needed
+    subscribe(EventTypes.ELEMENT_CREATED, (data) => {
+        console.log(`Element created: ${data.type}`);
+    });
+    
+    subscribe(EventTypes.ELEMENT_REMOVED, (data) => {
+        console.log(`Element removed: ${data.type}`);
+    });
+    
+    subscribe(EventTypes.STATE_CHANGED, (data) => {
+        console.log(`State changed from ${data.from} to ${data.to}`);
+    });
+}
+
 function initializeApp() {
     console.log('initializeApp started.');
+    
+    // Set up event subscriptions for the UI
+    setupEventSubscriptions();
+    
     const refs = {};
     const ids = [
         'app-container', 'three-js-canvas-container', 'message-box', 'message-text', 'message-ok-btn',
