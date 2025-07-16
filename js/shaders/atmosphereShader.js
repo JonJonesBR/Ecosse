@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { shaderErrorHandler } from '../systems/shaderErrorHandler.js';
 
 // Vertex shader for atmosphere
 export const atmosphereVertexShader = `
@@ -97,22 +98,39 @@ export function createAtmosphereMaterial(options = {}) {
     scatteringStrength = 1.0
   } = options;
   
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      atmosphereColor: { value: atmosphereColor },
-      atmosphereHighlightColor: { value: atmosphereHighlightColor },
-      atmosphereDensity: { value: atmosphereDensity },
-      planetRadius: { value: planetRadius },
-      atmosphereThickness: { value: atmosphereThickness },
-      scatteringStrength: { value: scatteringStrength },
-      time: { value: 0 }
-    },
-    vertexShader: atmosphereVertexShader,
-    fragmentShader: atmosphereFragmentShader,
-    transparent: true,
-    blending: THREE.AdditiveBlending,
-    side: THREE.BackSide
-  });
+  // Create uniforms object
+  const uniforms = {
+    atmosphereColor: { value: atmosphereColor },
+    atmosphereHighlightColor: { value: atmosphereHighlightColor },
+    atmosphereDensity: { value: atmosphereDensity },
+    planetRadius: { value: planetRadius },
+    atmosphereThickness: { value: atmosphereThickness },
+    scatteringStrength: { value: scatteringStrength },
+    time: { value: 0 }
+  };
+  
+  try {
+    // Use the shader error handler to create a safe shader material
+    return shaderErrorHandler.createSafeShaderMaterial({
+      uniforms,
+      vertexShader: atmosphereVertexShader,
+      fragmentShader: atmosphereFragmentShader,
+      transparent: true,
+      blending: THREE.AdditiveBlending,
+      side: THREE.BackSide,
+      shaderType: 'atmosphere'
+    });
+  } catch (error) {
+    console.error("Error creating atmosphere material:", error);
+    
+    // Fallback to a simple material if shader creation fails
+    return new THREE.MeshBasicMaterial({
+      color: atmosphereColor,
+      transparent: true,
+      opacity: atmosphereDensity,
+      side: THREE.BackSide
+    });
+  }
 }
 
 /**

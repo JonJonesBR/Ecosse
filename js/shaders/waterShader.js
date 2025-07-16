@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { shaderErrorHandler } from '../systems/shaderErrorHandler.js';
 
 // Vertex shader for water
 export const waterVertexShader = `
@@ -69,9 +70,22 @@ export const waterFragmentShader = `
     vec2 p = mod(uv * distortionScale, vec2(1.0)) * 2.0 - 1.0;
     float d = length(p);
     vec2 st = uv * 0.1 + 0.2 * vec2(cos(time * 0.4 + 2.0 * d), sin(time * 0.3 + 2.0 * d));
-    float r = texture2D(envMap, st).r;
-    float g = texture2D(envMap, st + vec2(0.1, 0.0)).g;
-    float b = texture2D(envMap, st + vec2(0.0, 0.1)).b;
+    
+    // Create a 3D direction vector from 2D coordinates for cube texture sampling
+    vec3 dir1 = vec3(st.x, st.y, 1.0);
+    vec3 dir2 = vec3(st.x + 0.1, st.y, 1.0);
+    vec3 dir3 = vec3(st.x, st.y + 0.1, 1.0);
+    
+    // Normalize directions for proper cubemap sampling
+    dir1 = normalize(dir1);
+    dir2 = normalize(dir2);
+    dir3 = normalize(dir3);
+    
+    // Sample the cubemap with the proper function
+    float r = textureCube(envMap, dir1).r;
+    float g = textureCube(envMap, dir2).g;
+    float b = textureCube(envMap, dir3).b;
+    
     return vec3(r, g, b);
   }
   
@@ -131,22 +145,39 @@ export function createWaterMaterial(options = {}) {
   // Create environment map if not provided
   const defaultEnvMap = envMap || createDefaultEnvMap();
   
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      waterColor: { value: waterColor },
-      waterDeepColor: { value: waterDeepColor },
-      waveHeight: { value: waveHeight },
-      waveFrequency: { value: waveFrequency },
-      reflectionStrength: { value: reflectionStrength },
-      distortionScale: { value: distortionScale },
-      envMap: { value: defaultEnvMap }
-    },
-    vertexShader: waterVertexShader,
-    fragmentShader: waterFragmentShader,
-    transparent: true,
-    side: THREE.DoubleSide
-  });
+  // Create uniforms object
+  const uniforms = {
+    time: { value: 0 },
+    waterColor: { value: waterColor },
+    waterDeepColor: { value: waterDeepColor },
+    waveHeight: { value: waveHeight },
+    waveFrequency: { value: waveFrequency },
+    reflectionStrength: { value: reflectionStrength },
+    distortionScale: { value: distortionScale },
+    envMap: { value: defaultEnvMap }
+  };
+  
+  try {
+    // Use the shader error handler to create a safe shader material
+    return shaderErrorHandler.createSafeShaderMaterial({
+      uniforms,
+      vertexShader: waterVertexShader,
+      fragmentShader: waterFragmentShader,
+      transparent: true,
+      side: THREE.DoubleSide,
+      shaderType: 'water'
+    });
+  } catch (error) {
+    console.error('Error creating water material:', error);
+    
+    // Fallback to a simple material if shader creation fails
+    return new THREE.MeshPhongMaterial({
+      color: waterColor,
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide
+    });
+  }
 }
 
 /**
@@ -154,15 +185,7 @@ export function createWaterMaterial(options = {}) {
  * @returns {THREE.CubeTexture} - The default environment map
  */
 function createDefaultEnvMap() {
-  const path = 'models/envmap/';
-  const format = '.jpg';
-  const urls = [
-    path + 'px' + format, path + 'nx' + format,
-    path + 'py' + format, path + 'ny' + format,
-    path + 'pz' + format, path + 'nz' + format
-  ];
-  
-  // Create a dummy cube texture if files don't exist
+  // Create a dummy cube texture
   const size = 16;
   const data = new Uint8Array(size * size * 4);
   

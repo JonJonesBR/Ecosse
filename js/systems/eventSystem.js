@@ -163,6 +163,16 @@ class EventSystem {
       console.debug('Event history cleared');
     }
   }
+  
+  /**
+   * Alias for publish method to maintain compatibility
+   * @param {string} eventType - The type of event to publish
+   * @param {Object} data - The data to pass to subscribers
+   * @returns {Object} - The event object that was published
+   */
+  emit(eventType, data = {}) {
+    return this.publish(eventType, data);
+  }
 }
 
 // Create a singleton instance
@@ -188,6 +198,7 @@ export const EventTypes = {
   // Environment events
   WEATHER_CHANGED: 'environment:weather_changed',
   SEASON_CHANGED: 'environment:season_changed',
+  TIME_OF_DAY_CHANGED: 'environment:time_of_day_changed',
   
   // Player events
   PLAYER_ENERGY_CHANGED: 'player:energy_changed',

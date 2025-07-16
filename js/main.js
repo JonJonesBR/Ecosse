@@ -28,6 +28,11 @@ function setupEventSubscriptions() {
         updateWeatherDisplay(data);
     });
     
+    // Subscribe to time of day change events to update the UI
+    subscribe(EventTypes.TIME_OF_DAY_CHANGED, (data) => {
+        updateTimeOfDayDisplay(data);
+    });
+    
     // Subscribe to other events as needed
     subscribe(EventTypes.ELEMENT_CREATED, (data) => {
         console.log(`Element created: ${data.type}`);
@@ -550,6 +555,38 @@ export function updateWeatherDisplay(weather) {
     if (currentWeatherSpan) {
         currentWeatherSpan.textContent = `${weather.emoji} ${weather.type.charAt(0).toUpperCase() + weather.type.slice(1)}`;
     }
+}
+
+// Time of day display with appropriate emoji
+let currentTimeOfDaySpan;
+
+export function updateTimeOfDayDisplay(data) {
+    if (!currentTimeOfDaySpan) {
+        currentTimeOfDaySpan = document.getElementById('current-time-of-day');
+        if (!currentTimeOfDaySpan) return;
+    }
+    
+    // Get emoji based on time of day
+    let emoji = '';
+    switch (data.timeOfDay) {
+        case 'dawn':
+            emoji = '🌅'; // Sunrise
+            break;
+        case 'day':
+            emoji = '☀️'; // Sun
+            break;
+        case 'dusk':
+            emoji = '🌇'; // Sunset
+            break;
+        case 'night':
+            emoji = '🌙'; // Moon
+            break;
+        default:
+            emoji = '⏱️'; // Clock as fallback
+    }
+    
+    // Update the display
+    currentTimeOfDaySpan.textContent = `${emoji} ${data.timeOfDay.charAt(0).toUpperCase() + data.timeOfDay.slice(1)}`;
 }
 
 window.addEventListener('DOMContentLoaded', () => {

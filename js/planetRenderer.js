@@ -13,119 +13,85 @@ import {
     createSnowGeometry
 } from './shaders/index.js';
 import { particleSystem, ParticleTypes } from './systems/particleSystem.js';
+import { lightingSystem } from './systems/lightingSystem.js';
+import { eventSystem, EventTypes } from './systems/eventSystem.js';
+import { renderingSystem } from './systems/renderingSystem.js';
 
 let scene, camera, renderer, controls;
 let planetMesh, starField, ghostElementMesh, rainParticles, cloudMesh, waterMesh;
 const elements3D = new THREE.Group(); // This will now hold non-instanced elements
-let instancedMeshes = {}; // NEW: To hold InstancedMesh objects keyed by element type
-const dummy = new THREE.Object3D(); // NEW: Dummy object for setting instance matrices
+let instancedMeshes = {}; // To hold InstancedMesh objects keyed by element type
+const dummy = new THREE.Object3D(); // Dummy object for setting instance matrices
 let rendererContainer;
-let dayCycleTime = 0; // New variable for day/night cycle
-let moonLight; // New variable for moon light
 
 export function init3DScene(container, initialConfig) {
     rendererContainer = container;
-    // Clear existing content in the container
-    while (container.firstChild) {
-        container.removeChild(container.firstChild);
-    }
-    scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x0f172a);
-
-    camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 2000);
-    renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(container.clientWidth, container.clientHeight);
-    container.appendChild(renderer.domElement);
-
-    scene.add(new THREE.AmbientLight(0x404040, 2));
-    const sunLight = new THREE.DirectionalLight(0xffffff, initialConfig.luminosity);
-    sunLight.position.set(200, 100, 200);
-    sunLight.name = 'sunLight'; // Name the light for easy access
-    scene.add(sunLight);
-
-    moonLight = new THREE.DirectionalLight(0xADD8E6, 0); // Light blue, initially off
-    moonLight.position.set(-200, -100, -200);
-    moonLight.name = 'moonLight';
-    scene.add(moonLight);
-
+    
+    // Initialize the enhanced rendering system
+    const rendererDomElement = renderingSystem.init(container, {
+        enablePostProcessing: true,
+        enableBloom: true,
+        enableFXAA: true,
+        enableShadows: false,
+        qualityLevel: 'high',
+        adaptiveQuality: true
+    });
+    
+    // Store references to scene, camera, and renderer from the rendering system
+    scene = renderingSystem.scene;
+    camera = renderingSystem.camera;
+    renderer = renderingSystem.renderer;
+    
+    // Setup controls with optimized settings
     controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 0.8;
+    controls.zoomSpeed = 0.8;
+    
+    // Store controls in rendering system for animation updates
+    renderingSystem.controls = controls;
+    
+    // Create scene elements
     createPlanet(initialConfig);
     createStarfield();
     createClouds(initialConfig);
     createRainParticles();
 
-    // NEW: Initialize InstancedMeshes for common elements
+    // Initialize InstancedMeshes with color support for common elements
     for (const type in elementDefinitions) {
         const def = elementDefinitions[type];
-        if (['plant', 'creature', 'rock'].includes(type)) { // Elements to be instanced
+        if (['plant', 'creature', 'rock'].includes(type)) {
             const { geometry, material } = getBaseMeshForInstancing(type);
             if (geometry && material) {
-                const instancedMesh = new THREE.InstancedMesh(geometry, material, 5000); // Max instances
-                instancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-                instancedMeshes[type] = instancedMesh;
-                scene.add(instancedMesh);
+                // Use the rendering system to create instanced meshes
+                instancedMeshes[type] = renderingSystem.createOrUpdateInstancedMesh(
+                    type, 
+                    geometry, 
+                    material, 
+                    5000
+                );
             }
         }
     }
 
-    scene.add(elements3D); // elements3D will now hold non-instanced elements
-
-    const animate = () => {
-        requestAnimationFrame(animate);
-        controls.update();
-
-        // Update day/night cycle
-        dayCycleTime += 0.001; // Adjust speed of day/night cycle
-        const sunLight = scene.getObjectByName('sunLight');
-        const ambientLight = scene.getObjectByProperty('isAmbientLight', true);
-
-        if (sunLight) {
-            // Rotate sun around the planet
-            sunLight.position.x = Math.sin(dayCycleTime) * 200;
-            sunLight.position.z = Math.cos(dayCycleTime) * 200;
-
-            // Adjust sun intensity based on its position (simulating dawn/dusk)
-            const sunIntensityFactor = Math.max(0, Math.sin(dayCycleTime + Math.PI / 4)); // Offset for smoother transition
-            sunLight.intensity = initialConfig.luminosity * sunIntensityFactor;
-        }
-
-        if (moonLight) {
-            // Rotate moon opposite to sun
-            moonLight.position.x = Math.sin(dayCycleTime + Math.PI) * 200;
-            moonLight.position.z = Math.cos(dayCycleTime + Math.PI) * 200;
-
-            // Adjust moon intensity
-            const moonIntensityFactor = Math.max(0, Math.sin(dayCycleTime - Math.PI / 4)); // Offset for smoother transition
-            moonLight.intensity = 0.5 * moonIntensityFactor; // Moonlight is dimmer
-        }
-
-        if (ambientLight) {
-            // Adjust ambient light intensity based on time of day
-            ambientLight.intensity = 0.8 + (Math.sin(dayCycleTime) + 1) * 0.75; // Brighter during day, dimmer at night (adjusted for brighter night)
-        }
-        
-        // Update all custom shaders via shader manager
-        if (shaderManager) {
-            shaderManager.update();
-        }
-        
-        // No need to manually animate rain particles or clouds anymore
-        // as they're now handled by the shader manager
-
-        renderer.render(scene, camera);
-    };
-    animate();
-
+    // Add group for non-instanced elements
+    scene.add(elements3D);
+    
+    // Handle window resize
     window.addEventListener('resize', onWindowResize);
-    return renderer.domElement;
+    
+    return rendererDomElement;
 }
 
 function onWindowResize() {
-    camera.aspect = rendererContainer.clientWidth / rendererContainer.clientHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(rendererContainer.clientWidth, rendererContainer.clientHeight);
+    if (renderingSystem) {
+        renderingSystem.onWindowResize(rendererContainer);
+    } else {
+        camera.aspect = rendererContainer.clientWidth / rendererContainer.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(rendererContainer.clientWidth, rendererContainer.clientHeight);
+    }
 }
 
 export function updatePlanetAppearance(config) {
@@ -135,39 +101,106 @@ export function updatePlanetAppearance(config) {
 function createPlanet(config) {
     const planetRadius = ecosystemSizes[config.ecosystemSize].radius;
 
-    // Update or create planet mesh
-    if (planetMesh) {
-        // Update geometry only if radius changes
-        if (planetMesh.geometry.parameters.radius !== planetRadius) {
-            planetMesh.geometry.dispose();
-            planetMesh.geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
-        }
-
-        // Update material properties
-        const newTexture = new THREE.CanvasTexture(generatePlanetTexture(config));
-        const newBumpMap = new THREE.CanvasTexture(generateBumpMapTexture(config));
-        if (planetMesh.material.map) {
-            planetMesh.material.map.dispose(); // Dispose old texture
-        }
-        if (planetMesh.material.bumpMap) {
-            planetMesh.material.bumpMap.dispose(); // Dispose old bump map
-        }
-        planetMesh.material.map = newTexture;
-        planetMesh.material.bumpMap = newBumpMap;
-        planetMesh.material.bumpScale = 5; // Adjust this value for desired bump intensity
-        planetMesh.material.shininess = config.planetType === 'aquatic' ? 100 : 10;
-        planetMesh.material.needsUpdate = true; // Important for material changes
-    } else {
-        // Create new planet mesh if it doesn't exist
-        const geometry = new THREE.SphereGeometry(planetRadius, 64, 64);
-        const material = new THREE.MeshPhongMaterial({
+    // Create a LOD (Level of Detail) system for the planet
+    const createPlanetLOD = () => {
+        // Create LOD object if it doesn't exist
+        const planetLOD = new THREE.LOD();
+        
+        // Create high detail geometry (for close-up viewing)
+        const highDetailGeometry = new THREE.SphereGeometry(planetRadius, 64, 64);
+        const highDetailMaterial = new THREE.MeshPhongMaterial({
             map: new THREE.CanvasTexture(generatePlanetTexture(config)),
             bumpMap: new THREE.CanvasTexture(generateBumpMapTexture(config)),
-            bumpScale: 5, // Adjust this value for desired bump intensity
+            bumpScale: 5,
             shininess: config.planetType === 'aquatic' ? 100 : 10
         });
-        planetMesh = new THREE.Mesh(geometry, material);
-        planetMesh.rotation.z = Math.PI / 8; // Add a slight axial tilt (22.5 degrees)
+        const highDetailMesh = new THREE.Mesh(highDetailGeometry, highDetailMaterial);
+        
+        // Create medium detail geometry (for medium distance viewing)
+        const mediumDetailGeometry = new THREE.SphereGeometry(planetRadius, 48, 48);
+        const mediumDetailMaterial = new THREE.MeshPhongMaterial({
+            map: new THREE.CanvasTexture(generatePlanetTexture(config, 0.75)), // Lower resolution texture
+            bumpMap: new THREE.CanvasTexture(generateBumpMapTexture(config, 0.75)),
+            bumpScale: 3,
+            shininess: config.planetType === 'aquatic' ? 80 : 8
+        });
+        const mediumDetailMesh = new THREE.Mesh(mediumDetailGeometry, mediumDetailMaterial);
+        
+        // Create low detail geometry (for distant viewing)
+        const lowDetailGeometry = new THREE.SphereGeometry(planetRadius, 32, 32);
+        const lowDetailMaterial = new THREE.MeshPhongMaterial({
+            map: new THREE.CanvasTexture(generatePlanetTexture(config, 0.5)), // Lower resolution texture
+            bumpMap: new THREE.CanvasTexture(generateBumpMapTexture(config, 0.5)),
+            bumpScale: 2,
+            shininess: config.planetType === 'aquatic' ? 60 : 6
+        });
+        const lowDetailMesh = new THREE.Mesh(lowDetailGeometry, lowDetailMaterial);
+        
+        // Add LOD levels
+        planetLOD.addLevel(highDetailMesh, 0);          // High detail for close-up
+        planetLOD.addLevel(mediumDetailMesh, 200);      // Medium detail for medium distance
+        planetLOD.addLevel(lowDetailMesh, 500);         // Low detail for far distance
+        
+        // Set rotation
+        planetLOD.rotation.z = Math.PI / 8; // Add a slight axial tilt (22.5 degrees)
+        
+        return planetLOD;
+    };
+
+    // Update or create planet mesh
+    if (planetMesh) {
+        // If the existing planet is not a LOD object, replace it with one
+        if (!(planetMesh instanceof THREE.LOD)) {
+            scene.remove(planetMesh);
+            planetMesh.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => {
+                            if (m.map) m.map.dispose();
+                            if (m.bumpMap) m.bumpMap.dispose();
+                            m.dispose();
+                        });
+                    } else {
+                        if (child.material.map) child.material.map.dispose();
+                        if (child.material.bumpMap) child.material.bumpMap.dispose();
+                        child.material.dispose();
+                    }
+                }
+            });
+            
+            // Create new LOD planet
+            planetMesh = createPlanetLOD();
+            scene.add(planetMesh);
+        } else {
+            // Update existing LOD planet
+            // This is more complex as we need to update each LOD level
+            // For simplicity, we'll replace the entire LOD object
+            scene.remove(planetMesh);
+            planetMesh.traverse(child => {
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) {
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(m => {
+                            if (m.map) m.map.dispose();
+                            if (m.bumpMap) m.bumpMap.dispose();
+                            m.dispose();
+                        });
+                    } else {
+                        if (child.material.map) child.material.map.dispose();
+                        if (child.material.bumpMap) child.material.bumpMap.dispose();
+                        child.material.dispose();
+                    }
+                }
+            });
+            
+            // Create new LOD planet
+            planetMesh = createPlanetLOD();
+            scene.add(planetMesh);
+        }
+    } else {
+        // Create new LOD planet
+        planetMesh = createPlanetLOD();
         scene.add(planetMesh);
     }
 
@@ -260,11 +293,14 @@ function createPlanet(config) {
         planetMesh.add(atmosphere);
     }
 
-    // Update sun light (already optimized)
-    const sunLight = scene.getObjectByName('sunLight');
-    if (sunLight) {
-        sunLight.intensity = config.luminosity;
-    }
+    // Update lighting system configuration based on planet type
+    lightingSystem.updateLightingConfiguration({
+        sunIntensity: config.luminosity,
+        colorTemperature: config.planetType === 'desert' ? 7500 : 
+                         config.planetType === 'aquatic' ? 6000 : 
+                         config.planetType === 'volcanic' ? 8000 : 
+                         config.planetType === 'gas' ? 7000 : 6500
+    });
 
     camera.position.z = planetRadius * 2;
     controls.minDistance = planetRadius + 10;
@@ -274,10 +310,13 @@ function createPlanet(config) {
 
 const simplex = new SimplexNoise(); // Initialize Simplex Noise
 
-function generatePlanetTexture(config) {
+function generatePlanetTexture(config, detailLevel = 1.0) {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024; // Increased resolution for better detail
-    canvas.height = 512;
+    // Adjust resolution based on detail level
+    const baseWidth = 1024;
+    const baseHeight = 512;
+    canvas.width = Math.floor(baseWidth * detailLevel);
+    canvas.height = Math.floor(baseHeight * detailLevel);
     const context = canvas.getContext('2d');
 
     const waterColor = '#1E90FF'; // DodgerBlue
@@ -288,7 +327,8 @@ function generatePlanetTexture(config) {
     const gasColor2 = '#FFDEAD'; // NavajoWhite
 
     const scale = 0.02; // Adjust for continent size
-    const octaves = 4;
+    // Adjust octaves based on detail level to reduce computation for lower detail
+    const octaves = Math.max(2, Math.floor(4 * detailLevel));
     const persistence = 0.5;
     const lacunarity = 2.0;
     const threshold = 0.1; // Adjust for land/water ratio
@@ -299,8 +339,12 @@ function generatePlanetTexture(config) {
             let frequency = 1;
             let amplitude = 1;
 
+            // Scale coordinates to match the full-size texture
+            const scaledX = x * (baseWidth / canvas.width);
+            const scaledY = y * (baseHeight / canvas.height);
+
             for (let i = 0; i < octaves; i++) {
-                noiseValue += simplex.noise2D(x * scale * frequency, y * scale * frequency) * amplitude;
+                noiseValue += simplex.noise2D(scaledX * scale * frequency, scaledY * scale * frequency) * amplitude;
                 frequency *= lacunarity;
                 amplitude *= persistence;
             }
@@ -336,7 +380,7 @@ function generatePlanetTexture(config) {
                     break;
                 case 'gas':
                     // For gas giants, use noise to create bands
-                    const bandNoise = simplex.noise2D(0, y * 0.05); // Noise along y-axis for bands
+                    const bandNoise = simplex.noise2D(0, scaledY * 0.05); // Noise along y-axis for bands
                     if (bandNoise > 0) {
                         color = gasColor1;
                     } else {
@@ -354,14 +398,18 @@ function generatePlanetTexture(config) {
     return canvas;
 }
 
-function generateBumpMapTexture(config) {
+function generateBumpMapTexture(config, detailLevel = 1.0) {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
+    // Adjust resolution based on detail level
+    const baseWidth = 1024;
+    const baseHeight = 512;
+    canvas.width = Math.floor(baseWidth * detailLevel);
+    canvas.height = Math.floor(baseHeight * detailLevel);
     const context = canvas.getContext('2d');
 
     const scale = 0.05; // Adjust for mountain size
-    const octaves = 6;
+    // Adjust octaves based on detail level to reduce computation for lower detail
+    const octaves = Math.max(3, Math.floor(6 * detailLevel));
     const persistence = 0.5;
     const lacunarity = 2.0;
 
@@ -371,8 +419,12 @@ function generateBumpMapTexture(config) {
             let frequency = 1;
             let amplitude = 1;
 
+            // Scale coordinates to match the full-size texture
+            const scaledX = x * (baseWidth / canvas.width);
+            const scaledY = y * (baseHeight / canvas.height);
+
             for (let i = 0; i < octaves; i++) {
-                noiseValue += simplex.noise2D(x * scale * frequency, y * scale * frequency) * amplitude;
+                noiseValue += simplex.noise2D(scaledX * scale * frequency, scaledY * scale * frequency) * amplitude;
                 frequency *= lacunarity;
                 amplitude *= persistence;
             }
@@ -561,147 +613,53 @@ let volcanoSmokeParticles = null;
 let meteorExplosionParticles = null;
 
 export function triggerVolcanoEruption(position) {
-    // Use the advanced particle system instead of the basic one
-    if (particleSystem) {
-        // Create fire and smoke effect at the volcano position
-        particleSystem.createEffect('fireAndSmoke', position, {
-            scale: 2.0, // Larger scale for more dramatic effect
-            duration: 3.0 // Longer duration for volcano eruption
+    // Use the enhanced rendering system for visual effects
+    renderingSystem.triggerVisualEffect('volcano', position, {
+        scale: 2.0, // Larger scale for more dramatic effect
+        duration: 3.0 // Longer duration for volcano eruption
+    });
+    
+    // Add additional smoke particles with delay for a more realistic eruption
+    setTimeout(() => {
+        renderingSystem.triggerVisualEffect('smoke', position, {
+            scale: 2.5,
+            duration: 5.0
         });
-        
-        // Add additional smoke particles with delay for a more realistic eruption
-        setTimeout(() => {
-            particleSystem.spawnParticles(ParticleTypes.SMOKE, position, {
-                scale: 2.5,
-                duration: 5.0
-            });
-        }, 500);
-        
-        // Add some sparks/embers
-        setTimeout(() => {
-            particleSystem.spawnParticles(ParticleTypes.SPARKLE, position, {
-                scale: 1.0,
-                duration: 2.0
-            });
-        }, 200);
-    } else {
-        // Fallback to old implementation if particle system is not available
-        if (volcanoSmokeParticles) scene.remove(volcanoSmokeParticles);
-
-        const particleCount = 500;
-        const particles = new THREE.BufferGeometry();
-        const pArray = new Float32Array(particleCount * 3);
-
-        for (let i = 0; i < particleCount * 3; i += 3) {
-            pArray[i] = position.x + (Math.random() - 0.5) * 20;
-            pArray[i + 1] = position.y + (Math.random() - 0.5) * 20;
-            pArray[i + 2] = position.z + (Math.random() - 0.5) * 20;
-        }
-        particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
-
-        const pMaterial = new THREE.PointsMaterial({
-            color: 0x808080, // Grey smoke
-            size: 5,
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
+    }, 500);
+    
+    // Add some sparks/embers
+    setTimeout(() => {
+        renderingSystem.triggerVisualEffect('sparkle', position, {
+            scale: 1.0,
+            duration: 2.0
         });
-
-        volcanoSmokeParticles = new THREE.Points(particles, pMaterial);
-        scene.add(volcanoSmokeParticles);
-
-        // Animate smoke for a short duration
-        let opacity = 0.8;
-        const animateSmoke = () => {
-            if (volcanoSmokeParticles) {
-                opacity -= 0.02;
-                volcanoSmokeParticles.material.opacity = opacity;
-                volcanoSmokeParticles.scale.multiplyScalar(1.05);
-                if (opacity > 0) {
-                    requestAnimationFrame(animateSmoke);
-                } else {
-                    scene.remove(volcanoSmokeParticles);
-                    volcanoSmokeParticles.geometry.dispose();
-                    volcanoSmokeParticles.material.dispose();
-                    volcanoSmokeParticles = null;
-                }
-            }
-        };
-        animateSmoke();
-    }
+    }, 200);
 }
 
 export function triggerMeteorImpact(position) {
-    // Use the advanced particle system if available
-    if (particleSystem) {
-        // Create explosion effect at the impact position
-        particleSystem.createEffect('explosion', position, {
-            scale: 3.0, // Large scale for dramatic effect
-            duration: 2.0 // Short duration for explosive impact
-        });
-        
-        // Add dust particles with slight delay
-        setTimeout(() => {
-            particleSystem.spawnParticles(ParticleTypes.DUST, position, {
-                scale: 4.0,
-                duration: 4.0
-            });
-        }, 200);
-        
-        // Add fire particles
-        setTimeout(() => {
-            particleSystem.spawnParticles(ParticleTypes.FIRE, position, {
-                scale: 2.0,
-                duration: 3.0
-            });
-        }, 100);
-    } else {
-        // Fallback to old implementation if particle system is not available
-        if (meteorExplosionParticles) scene.remove(meteorExplosionParticles);
-
-        const particleCount = 1000;
-        const particles = new THREE.BufferGeometry();
-        const pArray = new Float32Array(particleCount * 3);
-
-        for (let i = 0; i < particleCount * 3; i += 3) {
-            pArray[i] = position.x + (Math.random() - 0.5) * 50;
-            pArray[i + 1] = position.y + (Math.random() - 0.5) * 50;
-            pArray[i + 2] = position.z + (Math.random() - 0.5) * 50;
-        }
-        particles.setAttribute('position', new THREE.BufferAttribute(pArray, 3));
-
-        const pMaterial = new THREE.PointsMaterial({
-            color: 0xFF4500, // Orange-red explosion
-            size: 10,
-            transparent: true,
-            opacity: 1.0,
-            blending: THREE.AdditiveBlending
-        });
-
-        meteorExplosionParticles = new THREE.Points(particles, pMaterial);
-        scene.add(meteorExplosionParticles);
-
-        // Animate explosion for a short duration
-        let opacity = 1.0;
-        const animateExplosion = () => {
-            if (meteorExplosionParticles) {
-                opacity -= 0.05;
-                meteorExplosionParticles.material.opacity = opacity;
-                meteorExplosionParticles.scale.multiplyScalar(1.1);
-                if (opacity > 0) {
-                    requestAnimationFrame(animateExplosion);
-                } else {
-                    scene.remove(meteorExplosionParticles);
-                    meteorExplosionParticles.geometry.dispose();
-                    meteorExplosionParticles.material.dispose();
-                    meteorExplosionParticles = null;
-                }
-            }
-        };
-        animateExplosion();
-    }
+    // Use the enhanced rendering system for visual effects
+    renderingSystem.triggerVisualEffect('explosion', position, {
+        scale: 3.0, // Large scale for dramatic effect
+        duration: 2.0 // Short duration for explosive impact
+    });
     
-    // Create crater regardless of which particle system is used
+    // Add dust particles with slight delay
+    setTimeout(() => {
+        renderingSystem.triggerVisualEffect('dust', position, {
+            scale: 4.0,
+            duration: 4.0
+        });
+    }, 200);
+    
+    // Add fire particles
+    setTimeout(() => {
+        renderingSystem.triggerVisualEffect('fire', position, {
+            scale: 2.0,
+            duration: 3.0
+        });
+    }, 100);
+    
+    // Create crater
     createCrater(position, 50); // Create a crater with radius 50 at the impact position
 }
 
@@ -758,194 +716,255 @@ function getBaseMeshForInstancing(type) {
 
 
 
+// Import LOD and optimization utilities from renderOptimizer
+// Import LOD and optimization utilities from renderOptimizer
+import { 
+    LOD_LEVELS, 
+    getLODLevel, 
+    isVisible, 
+    getSimplifiedGeometry, 
+    sortElementsByImportance, 
+    filterElementsByLODAndVisibility,
+    updateInstancedMeshWithLOD
+} from './systems/renderOptimizer.js';
+
 export function updateElements3D(elements, config, currentMouse3DPoint, placingElement) {
     if (!planetMesh || !config) return;
-
-    const maxRenderedElementsPerType = 500; // Limit the number of 3D elements per type
 
     // Clear previous instances
     for (const type in instancedMeshes) {
         instancedMeshes[type].count = 0;
     }
 
-    // Sincronizar elementos
+    // Track active elements and rain status
     const activeIds = new Set();
     let hasRain = false;
 
-    // Filter and limit elements to be rendered in 3D
-    const elementsToRender = {};
-    for (const el of elements) {
-        if (!elementsToRender[el.type]) {
-            elementsToRender[el.type] = [];
+    // Group elements by type for better processing
+    const elementsByType = {};
+    elements.forEach(el => {
+        if (!elementsByType[el.type]) {
+            elementsByType[el.type] = [];
         }
-        if (elementsToRender[el.type].length < maxRenderedElementsPerType) {
-            elementsToRender[el.type].push(el);
-        }
-    }
-
-    // Process elements to render
-    for (const type in elementsToRender) {
-        elementsToRender[type].forEach((el, index) => {
-            if (el.type === 'rain') {
-                hasRain = true;
-            }
-
-            const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
-
-            if (['plant', 'creature', 'rock'].includes(el.type)) {
-                // Handle instanced elements
-                const instancedMesh = instancedMeshes[el.type];
-                if (instancedMesh) {
-                    dummy.position.copy(pos);
-                    dummy.lookAt(planetMesh.position);
-                    dummy.updateMatrix();
-                    instancedMesh.setMatrixAt(instancedMesh.count, dummy.matrix);
-
-                    // Set color based on health
-                    const healthFactor = el.health / 100; // Assuming max health is 100
-                    const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
-                    const deadColor = new THREE.Color(0x808080); // Grey
-                    const instanceColor = new THREE.Color().lerpColors(deadColor, baseColor, healthFactor);
-                    instancedMesh.setColorAt(instancedMesh.count, instanceColor);
-
-                    instancedMesh.count++;
-                }
-            } else if (el.type === 'water') {
-                // Handle water elements (still individual meshes for now)
-                activeIds.add(el.id);
-                let mesh = elements3D.children.find(c => c.userData.id === el.id);
-
-                if (!mesh) {
-                    const waterMaterial = new THREE.MeshPhongMaterial({
-                        color: 0x1E90FF, // DodgerBlue
-                        transparent: true,
-                        opacity: 0.7,
-                        side: THREE.DoubleSide
-                    });
-                    const waterSize = el.size * Math.min(1, el.amount / 100);
-                    const waterGeometry = new THREE.PlaneGeometry(waterSize, waterSize);
-                    mesh = new THREE.Mesh(waterGeometry, waterMaterial);
-                    mesh.userData.id = el.id;
-                    mesh.userData.type = 'water';
-                    elements3D.add(mesh);
-                }
-                mesh.position.copy(pos);
-                mesh.lookAt(planetMesh.position);
-            } else {
-                // Handle non-instanced elements (sun, meteor, volcano, tribe, fungus, eraser, rain)
-                activeIds.add(el.id);
-                let mesh = elements3D.children.find(c => c.userData.id === el.id);
-
-                if (!mesh) {
-                    mesh = createMeshForElement(el);
-                    if (!mesh) return; // Should not happen for these types now
-                    mesh.userData.id = el.id;
-                    mesh.userData.type = el.type; // Store type for easier filtering
-                    elements3D.add(mesh);
-
-                    if (el.type === 'sun') {
-                        mesh.position.set(500, 500, 500); // Sun is a special case, fixed position
-                        scene.add(mesh); // Add sun directly to scene, not elements3D
-                    } else if (el.type === 'meteor') {
-                        mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
-                    }
-                }
-
-                // Update existing mesh properties
-                if (el.type === 'meteor') {
-                    mesh.position.set(el.x, el.y, el.z); // Use the 3D position from MeteorElement
-                } else if (el.type !== 'sun') { // Sun position is fixed
-                    mesh.position.copy(pos);
-                    mesh.lookAt(planetMesh.position);
-                }
-
-                // Visual feedback for element health
-                if (mesh.material.color) {
-                    const healthFactor = el.health / 100; // Assuming max health is 100
-                    const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
-                    const deadColor = new THREE.Color(0x808080); // Grey
-                    mesh.material.color.lerpColors(deadColor, baseColor, healthFactor);
-                }
-            }
-        });
-    }
-
-    // Update instance matrices and colors
-    for (const type in instancedMeshes) {
-        instancedMeshes[type].instanceMatrix.needsUpdate = true;
-        if (instancedMeshes[type].instanceColor) {
-            instancedMeshes[type].instanceColor.needsUpdate = true;
-        }
-    }
-
-    // Remove non-instanced meshes that are no longer in the elements list or exceed the limit
-    elements3D.children.slice().forEach(child => {
-        // Check if the element still exists in the simulation and is within the rendering limit
-        const elementExistsAndShouldBeRendered = elementsToRender[child.userData.type] &&
-                                                 elementsToRender[child.userData.type].some(el => el.id === child.userData.id);
-
-        // Also check if it's an instanced type, if so, it should not be in elements3D anymore
-        const isInstancedType = ['plant', 'creature', 'rock'].includes(child.userData.type);
-
-        if ((!elementExistsAndShouldBeRendered && child.userData.id !== undefined && child.userData.type !== 'water') || isInstancedType) {
-            elements3D.remove(child);
-            child.geometry.dispose();
-            child.material.dispose();
+        elementsByType[el.type].push(el);
+        
+        // Check for rain elements
+        if (el.type === 'rain') {
+            hasRain = true;
         }
     });
 
-    // Handle water as a single mesh (existing logic, no change needed here)
-    const waterElements = elements.filter(el => el.type === 'water');
-    if (waterElements.length > 0) {
-        // Remove existing water meshes from elements3D if any
-        elements3D.children.slice().forEach(child => {
-            if (child.userData.type === 'water') {
-                elements3D.remove(child);
-                child.geometry.dispose();
-                child.material.dispose();
+    // Process each element type
+    for (const type in elementsByType) {
+        const typeElements = elementsByType[type];
+        
+        // Skip processing if no elements of this type
+        if (!typeElements.length) continue;
+
+        // Process instanced elements (plants, creatures, rocks) using the enhanced rendering system
+        if (['plant', 'creature', 'rock'].includes(type)) {
+            const instancedMesh = instancedMeshes[type];
+            if (!instancedMesh) continue;
+            
+            // Use the rendering system's optimized instanced mesh update
+            renderingSystem.updateInstancedElements(
+                type,
+                typeElements,
+                config,
+                get3DPositionOnPlanet
+            );
+        } 
+        // Handle water elements with consolidated rendering and LOD
+        else if (type === 'water') {
+            // Sort elements by importance (distance to camera-facing hemisphere)
+            const sortedElements = sortElementsByImportance(typeElements, config, camera, get3DPositionOnPlanet);
+            
+            // Filter water elements by LOD and visibility
+            const filteredElements = filterElementsByLODAndVisibility(
+                sortedElements, 
+                config, 
+                camera, 
+                get3DPositionOnPlanet
+            );
+            
+            // Remove existing water meshes
+            elements3D.children.slice().forEach(child => {
+                if (child.userData.type === 'water') {
+                    elements3D.remove(child);
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                }
+            });
+            
+            // Create shared material for water elements
+            const waterMaterial = new THREE.MeshPhongMaterial({
+                color: 0x1E90FF,
+                transparent: true,
+                opacity: 0.7,
+                side: THREE.DoubleSide
+            });
+            
+            // Process visible water elements with appropriate LOD
+            const visibleWaterElements = [
+                ...filteredElements.high.slice(0, LOD_LEVELS.HIGH.maxElements / 10),
+                ...filteredElements.medium.slice(0, LOD_LEVELS.MEDIUM.maxElements / 10),
+                ...filteredElements.low.slice(0, LOD_LEVELS.LOW.maxElements / 10)
+            ];
+            
+            // Create water meshes with appropriate LOD
+            visibleWaterElements.forEach(el => {
+                const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
+                const lodLevel = getLODLevel(pos, camera);
+                
+                activeIds.add(el.id);
+                const waterSize = el.size * Math.min(1, el.amount / 100) * lodLevel.detail;
+                
+                // Get simplified geometry based on LOD
+                const waterGeometry = getSimplifiedGeometry('water', lodLevel, waterSize);
+                
+                const waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+                waterMesh.position.copy(pos);
+                waterMesh.lookAt(planetMesh.position);
+                waterMesh.userData.id = el.id;
+                waterMesh.userData.type = 'water';
+                elements3D.add(waterMesh);
+            });
+        }
+        // Handle other non-instanced elements with LOD and occlusion culling
+        else {
+            // Sort elements by importance (distance to camera-facing hemisphere)
+            const sortedElements = sortElementsByImportance(typeElements, config, camera, get3DPositionOnPlanet);
+            
+            for (const el of sortedElements) {
+                // Get position based on element type
+                let pos;
+                if (el.type === 'meteor' && el.startPos && el.targetPos && el.progress !== undefined) {
+                    pos = new THREE.Vector3().lerpVectors(el.startPos, el.targetPos, el.progress);
+                } else if (el.type === 'sun') {
+                    pos = new THREE.Vector3(500, 500, 500);
+                } else {
+                    pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
+                }
+                
+                // Apply occlusion culling (except for sun which is always visible)
+                if (el.type !== 'sun' && !isVisible(pos, camera)) {
+                    continue;
+                }
+                
+                // Apply LOD
+                const lodLevel = el.type === 'sun' ? LOD_LEVELS.HIGH : getLODLevel(pos, camera);
+                
+                // Track active element
+                activeIds.add(el.id);
+                
+                // Find or create mesh
+                let mesh = elements3D.children.find(c => c.userData.id === el.id);
+                
+                if (!mesh) {
+                    mesh = createMeshForElement(el);
+                    if (!mesh) continue;
+                    
+                    mesh.userData.id = el.id;
+                    mesh.userData.type = el.type;
+                    
+                    if (el.type === 'sun') {
+                        scene.add(mesh); // Add sun directly to scene
+                    } else {
+                        elements3D.add(mesh);
+                    }
+                }
+                
+                // Update position and orientation
+                if (el.type === 'meteor') {
+                    mesh.position.copy(pos);
+                } else if (el.type !== 'sun') {
+                    mesh.position.copy(pos);
+                    mesh.lookAt(planetMesh.position);
+                    
+                    // Scale based on LOD level
+                    mesh.scale.set(lodLevel.detail, lodLevel.detail, lodLevel.detail);
+                }
+                
+                // Update visual appearance based on health
+                if (mesh.material && mesh.material.color && el.health !== undefined) {
+                    const healthFactor = Math.max(0, Math.min(1, el.health / 100));
+                    const baseColor = new THREE.Color(elementDefinitions[el.type].color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'));
+                    const deadColor = new THREE.Color(0x808080);
+                    mesh.material.color.lerpColors(deadColor, baseColor, healthFactor);
+                }
             }
-        });
-
-        const waterMaterial = new THREE.MeshPhongMaterial({
-            color: 0x1E90FF, // DodgerBlue
-            transparent: true,
-            opacity: 0.7,
-            side: THREE.DoubleSide
-        });
-
-        waterElements.forEach(el => {
-            const pos = get3DPositionOnPlanet(el.x, el.y, config, el.type);
-            const waterSize = el.size * Math.min(1, el.amount / 100);
-            const waterGeometry = new THREE.PlaneGeometry(waterSize, waterSize);
-            const individualWaterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-            individualWaterMesh.position.copy(pos);
-            individualWaterMesh.lookAt(planetMesh.position); // Orient towards planet center
-            individualWaterMesh.userData.id = el.id; // Keep track of the element ID
-            individualWaterMesh.userData.type = 'water';
-            elements3D.add(individualWaterMesh);
-        });
-
-    } else {
-        // Remove all water meshes if no water elements exist
-        elements3D.children.slice().forEach(child => {
-            if (child.userData.type === 'water') {
-                elements3D.remove(child);
-                child.geometry.dispose();
-                child.material.dispose();
-            }
-        });
+        }
     }
-    rainParticles.visible = hasRain;
 
-    // Lógica do fantasma (existing logic, no change needed here)
+    // Clean up non-instanced meshes that are no longer active
+    elements3D.children.slice().forEach(child => {
+        if (child.userData.id !== undefined && !activeIds.has(child.userData.id)) {
+            elements3D.remove(child);
+            if (child.geometry) child.geometry.dispose();
+            if (child.material) {
+                if (Array.isArray(child.material)) {
+                    child.material.forEach(m => m.dispose());
+                } else {
+                    child.material.dispose();
+                }
+            }
+        }
+    });
+
+    // Update rain particles visibility
+    rainParticles.visible = hasRain;
+    
+    // Update snow particles visibility based on weather
+    const snowParticles = scene.getObjectByName('snowParticles');
+    if (snowParticles) {
+        // Check if any weather elements indicate snow
+        const hasSnow = elements.some(el => el.type === 'weather' && el.weatherType === 'snowy');
+        snowParticles.visible = hasSnow;
+    }
+
+    // Ghost element logic with LOD support
     if (ghostElementMesh) scene.remove(ghostElementMesh);
     if (placingElement && placingElement !== 'eraser' && currentMouse3DPoint) {
         // Create a dummy element object for ghost rendering
         const dummyElement = { type: placingElement, height: 50 }; // Add height for rock ghost
-        ghostElementMesh = createMeshForElement(dummyElement);
-        if(ghostElementMesh) {
-            ghostElementMesh.material.transparent = true;
-            ghostElementMesh.material.opacity = 0.5;
+        
+        // Use LOD for ghost element based on element type
+        if (['plant', 'creature', 'rock'].includes(placingElement)) {
+            // For instanced types, create a simplified ghost mesh
+            const def = elementDefinitions[placingElement];
+            const size = def.size * 0.5;
+            let geometry;
+            
+            switch (placingElement) {
+                case 'rock':
+                    geometry = new THREE.ConeGeometry(size * 0.8, 50, 8);
+                    break;
+                case 'plant':
+                    geometry = new THREE.ConeGeometry(size * 0.7, size * 2, 8);
+                    break;
+                case 'creature':
+                    geometry = new THREE.SphereGeometry(size, 16, 16);
+                    break;
+            }
+            
+            const material = new THREE.MeshPhongMaterial({
+                color: def.color.replace('rgba', 'rgb').replace(/, \d\.\d+\)/, ')'),
+                transparent: true,
+                opacity: 0.5,
+                wireframe: false
+            });
+            
+            ghostElementMesh = new THREE.Mesh(geometry, material);
+        } else {
+            // For other types, use the standard mesh creation
+            ghostElementMesh = createMeshForElement(dummyElement);
+            if (ghostElementMesh) {
+                ghostElementMesh.material.transparent = true;
+                ghostElementMesh.material.opacity = 0.5;
+            }
+        }
+        
+        if (ghostElementMesh) {
             ghostElementMesh.position.copy(currentMouse3DPoint);
             ghostElementMesh.lookAt(planetMesh.position);
             scene.add(ghostElementMesh);

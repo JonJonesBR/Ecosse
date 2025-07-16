@@ -4,6 +4,7 @@
  */
 
 import * as THREE from 'three';
+import { shaderErrorHandler } from '../systems/shaderErrorHandler.js';
 
 // Vertex shader for rain particles
 export const rainVertexShader = `
@@ -192,19 +193,37 @@ export function createRainMaterial(options = {}) {
     rainTexture = null
   } = options;
   
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      rainSpeed: { value: rainSpeed },
-      turbulence: { value: turbulence },
-      rainTexture: { value: rainTexture }
-    },
-    vertexShader: rainVertexShader,
-    fragmentShader: rainFragmentShader,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
-  });
+  // Create uniforms object
+  const uniforms = {
+    time: { value: 0 },
+    rainSpeed: { value: rainSpeed },
+    turbulence: { value: turbulence },
+    rainTexture: { value: rainTexture }
+  };
+  
+  try {
+    // Use the shader error handler to create a safe shader material
+    return shaderErrorHandler.createSafeShaderMaterial({
+      uniforms,
+      vertexShader: rainVertexShader,
+      fragmentShader: rainFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      shaderType: 'rain'
+    });
+  } catch (error) {
+    console.error("Error creating rain material:", error);
+    
+    // Fallback to a simple material if shader creation fails
+    return new THREE.PointsMaterial({
+      color: new THREE.Color(0x88AAFF),
+      size: 2.0,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    });
+  }
 }
 
 /**
@@ -219,19 +238,37 @@ export function createSnowMaterial(options = {}) {
     snowTexture = null
   } = options;
   
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      snowSpeed: { value: snowSpeed },
-      turbulence: { value: turbulence },
-      snowTexture: { value: snowTexture }
-    },
-    vertexShader: snowVertexShader,
-    fragmentShader: snowFragmentShader,
-    transparent: true,
-    depthWrite: false,
-    blending: THREE.AdditiveBlending
-  });
+  // Create uniforms object
+  const uniforms = {
+    time: { value: 0 },
+    snowSpeed: { value: snowSpeed },
+    turbulence: { value: turbulence },
+    snowTexture: { value: snowTexture }
+  };
+  
+  try {
+    // Use the shader error handler to create a safe shader material
+    return shaderErrorHandler.createSafeShaderMaterial({
+      uniforms,
+      vertexShader: snowVertexShader,
+      fragmentShader: snowFragmentShader,
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      shaderType: 'snow'
+    });
+  } catch (error) {
+    console.error("Error creating snow material:", error);
+    
+    // Fallback to a simple material if shader creation fails
+    return new THREE.PointsMaterial({
+      color: new THREE.Color(0xFFFFFF),
+      size: 2.0,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending
+    });
+  }
 }
 
 /**
@@ -249,18 +286,35 @@ export function createCloudMaterial(options = {}) {
   // Create default cloud texture if not provided
   const defaultTexture = cloudTexture || createDefaultCloudTexture();
   
-  return new THREE.ShaderMaterial({
-    uniforms: {
-      time: { value: 0 },
-      windSpeed: { value: windSpeed },
-      cloudDensity: { value: cloudDensity },
-      cloudTexture: { value: defaultTexture }
-    },
-    vertexShader: cloudVertexShader,
-    fragmentShader: cloudFragmentShader,
-    transparent: true,
-    side: THREE.DoubleSide
-  });
+  // Create uniforms object
+  const uniforms = {
+    time: { value: 0 },
+    windSpeed: { value: windSpeed },
+    cloudDensity: { value: cloudDensity },
+    cloudTexture: { value: defaultTexture }
+  };
+  
+  try {
+    // Use the shader error handler to create a safe shader material
+    return shaderErrorHandler.createSafeShaderMaterial({
+      uniforms,
+      vertexShader: cloudVertexShader,
+      fragmentShader: cloudFragmentShader,
+      transparent: true,
+      side: THREE.DoubleSide,
+      shaderType: 'cloud'
+    });
+  } catch (error) {
+    console.error("Error creating cloud material:", error);
+    
+    // Fallback to a simple material if shader creation fails
+    return new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0xFFFFFF),
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide
+    });
+  }
 }
 
 /**

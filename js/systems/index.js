@@ -7,6 +7,8 @@
 import { eventSystem, EventTypes } from './eventSystem.js';
 import { loggingSystem, LogLevel } from './loggingSystem.js';
 import { stateManager } from './stateManager.js';
+import { lightingSystem } from './lightingSystem.js';
+import { particleSystem } from './particleSystem.js';
 
 // Initialize systems
 function initSystems(config = {}) {
@@ -30,13 +32,21 @@ function initSystems(config = {}) {
     stateManager.transitionTo(config.initialState);
   }
   
+  // Initialize lighting system if scene provided
+  if (config.scene) {
+    lightingSystem.init(config.scene, config.lighting);
+    particleSystem.init(config.scene);
+  }
+  
   // Log initialization
   loggingSystem.info('Systems initialized');
   
   return {
     eventSystem,
     loggingSystem,
-    stateManager
+    stateManager,
+    lightingSystem,
+    particleSystem
   };
 }
 
@@ -47,5 +57,7 @@ export {
   loggingSystem,
   LogLevel,
   stateManager,
+  lightingSystem,
+  particleSystem,
   initSystems
 };

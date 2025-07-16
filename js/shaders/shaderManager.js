@@ -4,8 +4,8 @@
  */
 
 import * as THREE from 'three';
-import { createWaterMaterial, updateWaterMaterial } from './waterShader.js';
-import { createAtmosphereMaterial, updateAtmosphereMaterial, configureAtmosphereForPlanetType } from './atmosphereShader.js';
+import { createWaterMaterial, updateWaterMaterial, waterVertexShader, waterFragmentShader } from './waterShader.js';
+import { createAtmosphereMaterial, updateAtmosphereMaterial, configureAtmosphereForPlanetType, atmosphereVertexShader, atmosphereFragmentShader } from './atmosphereShader.js';
 import { 
   createRainMaterial, 
   createSnowMaterial, 
@@ -13,12 +13,21 @@ import {
   createRainGeometry,
   createSnowGeometry,
   updateWeatherMaterial,
-  configureWeatherEffects
+  configureWeatherEffects,
+  rainVertexShader,
+  rainFragmentShader,
+  snowVertexShader,
+  snowFragmentShader,
+  cloudVertexShader,
+  cloudFragmentShader
 } from './weatherShader.js';
 import { eventSystem, EventTypes } from '../systems/eventSystem.js';
 import { stateManager } from '../systems/stateManager.js';
 import { loggingSystem } from '../systems/loggingSystem.js';
 import { particleSystem } from '../systems/particleSystem.js';
+import { shaderErrorHandler } from '../systems/shaderErrorHandler.js';
+import { shaderDiagnostics } from '../systems/shaderDiagnostics.js';
+import { notificationSystem } from '../systems/notificationSystem.js';
 
 /**
  * ShaderManager class for managing all custom shaders
@@ -177,34 +186,229 @@ class ShaderManager {
       
       // Update water material
       if (this.materials.water) {
-        updateWaterMaterial(this.materials.water, deltaTime);
+        try {
+          updateWaterMaterial(this.materials.water, deltaTime);
+        } catch (error) {
+          this.handleShaderError('water', error);
+        }
       }
       
       // Update atmosphere material
       if (this.materials.atmosphere) {
-        updateAtmosphereMaterial(this.materials.atmosphere, deltaTime);
+        try {
+          updateAtmosphereMaterial(this.materials.atmosphere, deltaTime);
+        } catch (error) {
+          this.handleShaderError('atmosphere', error);
+        }
       }
       
       // Update weather materials
       if (this.materials.rain) {
-        updateWeatherMaterial(this.materials.rain, deltaTime);
+        try {
+          updateWeatherMaterial(this.materials.rain, deltaTime);
+        } catch (error) {
+          this.handleShaderError('rain', error);
+        }
       }
       
       if (this.materials.snow) {
-        updateWeatherMaterial(this.materials.snow, deltaTime);
+        try {
+          updateWeatherMaterial(this.materials.snow, deltaTime);
+        } catch (error) {
+          this.handleShaderError('snow', error);
+        }
       }
       
       if (this.materials.cloud) {
-        updateWeatherMaterial(this.materials.cloud, deltaTime);
+        try {
+          updateWeatherMaterial(this.materials.cloud, deltaTime);
+        } catch (error) {
+          this.handleShaderError('cloud', error);
+        }
       }
       
       // Update particle system
-      particleSystem.update();
+      try {
+        particleSystem.update();
+      } catch (error) {
+        loggingSystem.error("Error updating particle system:", error);
+      }
     } catch (error) {
-      console.error("Error updating shaders:", error);
-      // Disable animation if there's an error to prevent continuous errors
-      this.animationEnabled = false;
+      loggingSystem.error("Critical error in shader update cycle:", error);
+      // Instead of disabling all animations, we'll try to recover
+      this.recoverFromCriticalError();
     }
+  }
+  
+  /**
+   * Handle shader-specific errors
+   * @param {string} shaderType - Type of shader that encountered an error
+   * @param {Error} error - The error object
+   */
+  handleShaderError(shaderType, error) {
+    loggingSystem.error(`Error updating ${shaderType} shader:`, error);
+    
+    // Log the error to the shader error handler
+    shaderErrorHandler.logError(shaderType, error.message);
+    
+    // Try to recover the specific shader
+    this.recoverShader(shaderType);
+  }
+  
+  /**
+   * Attempt to recover a specific shader after an error
+   * @param {string} shaderType - Type of shader to recover
+   */
+  recoverShader(shaderType) {
+    loggingSystem.info(`Attempting to recover ${shaderType} shader`);
+    
+    try {
+      switch (shaderType) {
+        case 'water':
+          if (this.meshes.water) {
+            // Replace with a simpler material
+            const fallbackMaterial = new THREE.MeshPhongMaterial({
+              color: new THREE.Color(0x0066FF),
+              transparent: true,
+              opacity: 0.8,
+              side: THREE.DoubleSide
+            });
+            this.meshes.water.material = fallbackMaterial;
+            this.materials.water = fallbackMaterial;
+          }
+          break;
+          
+        case 'atmosphere':
+          if (this.meshes.atmosphere) {
+            // Replace with a simpler material
+            const fallbackMaterial = new THREE.MeshBasicMaterial({
+              color: new THREE.Color(0x88AAFF),
+              transparent: true,
+              opacity: 0.3,
+              side: THREE.BackSide
+            });
+            this.meshes.atmosphere.material = fallbackMaterial;
+            this.materials.atmosphere = fallbackMaterial;
+          }
+          break;
+          
+        case 'rain':
+        case 'snow':
+          // Hide the particles if they cause problems
+          if (this.meshes[shaderType]) {
+            this.meshes[shaderType].visible = false;
+          }
+          break;
+          
+        case 'cloud':
+          if (this.meshes.cloud) {
+            // Replace with a simpler material
+            const fallbackMaterial = new THREE.MeshBasicMaterial({
+              color: new THREE.Color(0xFFFFFF),
+              transparent: true,
+              opacity: 0.5,
+              side: THREE.DoubleSide
+            });
+            this.meshes.cloud.material = fallbackMaterial;
+            this.materials.cloud = fallbackMaterial;
+          }
+          break;
+      }
+      
+      loggingSystem.info(`Successfully recovered ${shaderType} shader`);
+      
+      // Dispatch an event to notify the system about the recovery
+      eventSystem.dispatch(EventTypes.SHADER_RECOVERED, { 
+        shaderType, 
+        timestamp: Date.now() 
+      });
+    } catch (recoveryError) {
+      loggingSystem.error(`Failed to recover ${shaderType} shader:`, recoveryError);
+    }
+  }
+  
+  /**
+   * Recover from a critical shader error
+   */
+  recoverFromCriticalError() {
+    loggingSystem.warn("Attempting to recover from critical shader error");
+    
+    // Reset the clock to prevent large time jumps
+    if (this.clock) {
+      this.clock.getDelta(); // Clear accumulated time
+    }
+    
+    // Try to reinitialize materials with fallback options
+    try {
+      this.initMaterialsWithFallbacks();
+      this.animationEnabled = true;
+      
+      loggingSystem.info("Successfully recovered from critical shader error");
+      
+      // Dispatch an event to notify the system about the recovery
+      eventSystem.dispatch(EventTypes.SHADER_SYSTEM_RECOVERED, { 
+        timestamp: Date.now() 
+      });
+    } catch (error) {
+      loggingSystem.error("Failed to recover from critical shader error:", error);
+      this.animationEnabled = false;
+      
+      // Dispatch an event to notify the system about the failure
+      eventSystem.dispatch(EventTypes.SHADER_SYSTEM_FAILED, { 
+        error: error.message,
+        timestamp: Date.now() 
+      });
+    }
+  }
+  
+  /**
+   * Initialize materials with fallback options
+   */
+  initMaterialsWithFallbacks() {
+    // Use simple materials instead of shaders
+    this.materials.water = new THREE.MeshPhongMaterial({
+      color: new THREE.Color(0x0066FF),
+      transparent: true,
+      opacity: 0.8,
+      side: THREE.DoubleSide
+    });
+    
+    this.materials.atmosphere = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0x88AAFF),
+      transparent: true,
+      opacity: 0.3,
+      side: THREE.BackSide
+    });
+    
+    this.materials.rain = new THREE.PointsMaterial({
+      color: new THREE.Color(0x88AAFF),
+      size: 2.0,
+      transparent: true,
+      opacity: 0.6,
+      blending: THREE.AdditiveBlending
+    });
+    
+    this.materials.snow = new THREE.PointsMaterial({
+      color: new THREE.Color(0xFFFFFF),
+      size: 2.0,
+      transparent: true,
+      opacity: 0.7,
+      blending: THREE.AdditiveBlending
+    });
+    
+    this.materials.cloud = new THREE.MeshBasicMaterial({
+      color: new THREE.Color(0xFFFFFF),
+      transparent: true,
+      opacity: 0.5,
+      side: THREE.DoubleSide
+    });
+    
+    // Apply materials to meshes if they exist
+    if (this.meshes.water) this.meshes.water.material = this.materials.water;
+    if (this.meshes.atmosphere) this.meshes.atmosphere.material = this.materials.atmosphere;
+    if (this.meshes.rain) this.meshes.rain.material = this.materials.rain;
+    if (this.meshes.snow) this.meshes.snow.material = this.materials.snow;
+    if (this.meshes.cloud) this.meshes.cloud.material = this.materials.cloud;
   }
   
   /**
@@ -317,6 +521,124 @@ class ShaderManager {
     }
     
     loggingSystem.info(`Planet configuration updated: ${this.config.planetType}, ${this.config.atmosphereType}`);
+  }
+  
+  /**
+   * Update shader uniforms based on time of day
+   * @param {number} dayFactor - Factor representing time of day (0-1)
+   */
+  updateTimeOfDay(dayFactor) {
+    // Update water material based on time of day
+    if (this.materials.water && this.materials.water.uniforms) {
+      // Adjust water color based on time of day
+      const waterColor = new THREE.Color(0x0066FF);
+      const waterDeepColor = new THREE.Color(0x001E4C);
+      
+      // Make water darker at night
+      if (dayFactor < 0.5) {
+        const nightFactor = 1 - (dayFactor * 2);
+        waterColor.multiplyScalar(0.5 + 0.5 * (1 - nightFactor));
+        waterDeepColor.multiplyScalar(0.3 + 0.7 * (1 - nightFactor));
+      }
+      
+      if (this.materials.water.uniforms.waterColor) {
+        this.materials.water.uniforms.waterColor.value = waterColor;
+      }
+      
+      if (this.materials.water.uniforms.waterDeepColor) {
+        this.materials.water.uniforms.waterDeepColor.value = waterDeepColor;
+      }
+    }
+    
+    // Update atmosphere material based on time of day
+    if (this.materials.atmosphere && this.materials.atmosphere.uniforms) {
+      // Adjust atmosphere glow based on time of day
+      if (this.materials.atmosphere.uniforms.glowIntensity) {
+        // More glow during sunrise/sunset, less during day/night
+        const timeOfDayFactor = Math.sin(dayFactor * Math.PI);
+        const glowIntensity = 0.5 + timeOfDayFactor * 0.5;
+        this.materials.atmosphere.uniforms.glowIntensity.value = glowIntensity;
+      }
+    }
+    
+    // Store the current day factor
+    this.config.dayCycleTime = dayFactor;
+    
+    loggingSystem.debug(`Shader time of day updated: ${dayFactor.toFixed(2)}`);
+  }
+  
+  /**
+   * Run diagnostics on all shaders
+   * @returns {Object} - Diagnostic results
+   */
+  runDiagnostics() {
+    loggingSystem.info('Running shader diagnostics');
+    
+    const results = {};
+    
+    // Run diagnostics on water shader
+    if (waterVertexShader && waterFragmentShader) {
+      results.water = shaderDiagnostics.runDiagnostics(
+        waterVertexShader,
+        waterFragmentShader,
+        'water'
+      );
+    }
+    
+    // Run diagnostics on atmosphere shader
+    if (atmosphereVertexShader && atmosphereFragmentShader) {
+      results.atmosphere = shaderDiagnostics.runDiagnostics(
+        atmosphereVertexShader,
+        atmosphereFragmentShader,
+        'atmosphere'
+      );
+    }
+    
+    // Run diagnostics on rain shader
+    if (rainVertexShader && rainFragmentShader) {
+      results.rain = shaderDiagnostics.runDiagnostics(
+        rainVertexShader,
+        rainFragmentShader,
+        'rain'
+      );
+    }
+    
+    // Run diagnostics on snow shader
+    if (snowVertexShader && snowFragmentShader) {
+      results.snow = shaderDiagnostics.runDiagnostics(
+        snowVertexShader,
+        snowFragmentShader,
+        'snow'
+      );
+    }
+    
+    // Run diagnostics on cloud shader
+    if (cloudVertexShader && cloudFragmentShader) {
+      results.cloud = shaderDiagnostics.runDiagnostics(
+        cloudVertexShader,
+        cloudFragmentShader,
+        'cloud'
+      );
+    }
+    
+    // Show notification to user
+    notificationSystem.info('Shader diagnostics completed. Check console for details.');
+    
+    // Log results
+    loggingSystem.info('Shader diagnostics results:', results);
+    
+    return results;
+  }
+  
+  /**
+   * Show shader diagnostics report
+   */
+  showDiagnosticsReport() {
+    // Run diagnostics first
+    this.runDiagnostics();
+    
+    // Show diagnostic report
+    shaderDiagnostics.showDiagnosticReport();
   }
   
   /**
