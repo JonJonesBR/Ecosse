@@ -9,6 +9,9 @@ import { playSFX } from './audioManager.js'; // NEW IMPORT
 import { getScenarioById } from './scenarios.js'; // NEW IMPORT
 import { publish, subscribe, EventTypes } from './systems/eventSystem.js'; // NEW: Event system
 import { info, warning, error } from './systems/loggingSystem.js'; // NEW: Enhanced logging
+import { initFoodWebSystem, updatePopulationCounts } from './systems/foodWebSystem.js'; // NEW: Food web system
+import { weatherSystem } from './systems/weatherSystem.js'; // NEW: Enhanced weather system
+import { socialBehaviorSystem } from './systems/socialBehaviorSystem.js'; // NEW: Social behavior system
 
 // Variáveis de estado do módulo
 let ecosystemElements = [];
@@ -76,86 +79,31 @@ function updateSimulation(useGemini, geminiApiKey) {
 
     const activeTechEffects = getActiveTechnologyEffects(); // Get active technology effects
 
-    // NEW: Annual Cycle and Seasons (more dynamic)
-    annualCycleTime = (annualCycleTime + 0.0001) % 1; // Increment and loop from 0 to 1
-
-    // Calculate seasonal temperature effect using a sine wave
-    // Peaks in summer (annualCycleTime = 0.25) and troughs in winter (annualCycleTime = 0.75)
-    const temperatureAmplitude = 20; // Max temperature variation (e.g., +/- 20 degrees from base)
-    const seasonalTemperatureEffect = temperatureAmplitude * Math.sin(2 * Math.PI * (annualCycleTime - 0.25));
-
-    // Calculate seasonal growth effect (e.g., plants grow more in spring/summer)
-    const growthAmplitude = 0.5; // Max growth variation (e.g., +/- 0.5 from base 1.0)
-    const seasonalGrowthEffect = 1.0 + growthAmplitude * Math.sin(2 * Math.PI * (annualCycleTime - 0.25));
-
-    // Determine current season for display/logging
-    let newSeason;
-    if (annualCycleTime >= 0 && annualCycleTime < 0.25) {
-        newSeason = 'spring';
-    } else if (annualCycleTime >= 0.25 && annualCycleTime < 0.5) {
-        newSeason = 'summer';
-    } else if (annualCycleTime >= 0.5 && annualCycleTime < 0.75) {
-        newSeason = 'autumn';
-    } else {
-        newSeason = 'winter';
-    }
-
-    if (newSeason !== currentSeason) {
-        currentSeason = newSeason;
-        // Publish season change event
-        publish(EventTypes.SEASON_CHANGED, { 
-            season: currentSeason,
-            previousSeason: newSeason,
-            annualCycleTime
-        });
-        
+    // NEW: Enhanced Weather System with Seasonal Cycles and Extreme Events
+    const weatherEffects = weatherSystem.update(simulationConfig, ecosystemElements);
+    
+    // Update current season and weather from weather system
+    if (weatherEffects.season !== currentSeason) {
+        currentSeason = weatherEffects.season;
         logToObserver(`A estação mudou para: ${currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1)}`);
         showMessage(`A estação mudou para: ${currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1)}`);
         updateSeasonDisplay();
     }
+    
+    // Update current weather if it changed
+    if (weatherEffects.weather.type !== currentWeather.type) {
+        currentWeather = weatherEffects.weather;
+        logToObserver(`O clima mudou para: ${currentWeather.emoji} ${currentWeather.name}`);
+        updateWeatherDisplay(currentWeather);
+        playSFX('weatherChange');
+    }
 
-    // Apply seasonal effects to simulation config (or a temporary config for this tick)
+    // Apply weather effects to simulation config
     const effectiveSimulationConfig = {
         ...simulationConfig,
-        temperature: simulationConfig.temperature + seasonalTemperatureEffect,
-        // Luminosity is handled by the 3D renderer based on day/night cycle and base config
-        // Water presence could also be influenced by seasons, e.g., more rain in spring/autumn
-        waterPresence: simulationConfig.waterPresence + (currentSeason === 'spring' || currentSeason === 'autumn' ? 5 : currentSeason === 'winter' ? -10 : 0)
+        temperature: weatherEffects.effectiveTemperature,
+        waterPresence: weatherEffects.effectiveHumidity
     };
-
-    // Dynamic Weather Logic
-    const weatherChangeChance = 0.005; // 0.5% chance per simulation tick
-    if (Math.random() < weatherChangeChance) {
-        const possibleWeather = [];
-
-        // Sunny/Clear is always an option
-        possibleWeather.push({ type: 'sunny', emoji: '☀️', effect: 1.0 });
-
-        // Rain/Cloudy based on water presence and temperature
-        if (effectiveSimulationConfig.waterPresence > 40 && effectiveSimulationConfig.temperature < 25) {
-            possibleWeather.push({ type: 'rainy', emoji: '🌧️', effect: 0.8 }); // Plants thrive, creatures suffer
-            possibleWeather.push({ type: 'cloudy', emoji: '☁️', effect: 0.9 }); // Reduced light
-        }
-
-        // Hot/Dry based on temperature and water presence
-        if (effectiveSimulationConfig.temperature > 30 && effectiveSimulationConfig.waterPresence < 30) {
-            possibleWeather.push({ type: 'dry', emoji: '🔥', effect: 1.2 }); // Increased decay for water/plants
-        }
-
-        // Cold/Snowy based on temperature
-        if (effectiveSimulationConfig.temperature < 0) {
-            possibleWeather.push({ type: 'snowy', emoji: '❄️', effect: 0.7 }); // Reduced growth, increased decay
-        }
-
-        // Choose a random weather from possible options
-        const newWeather = possibleWeather[Math.floor(Math.random() * possibleWeather.length)];
-        if (newWeather.type !== currentWeather.type) {
-            currentWeather = newWeather;
-            logToObserver(`O clima mudou para: ${currentWeather.emoji} ${currentWeather.type}`);
-            updateWeatherDisplay(currentWeather); // Update UI for weather
-            playSFX('weatherChange'); // Play SFX for weather change
-        }
-    }
 
     const simulationState = {
         config: effectiveSimulationConfig, // Use effective config here
@@ -163,7 +111,8 @@ function updateSimulation(useGemini, geminiApiKey) {
         newElements: [],
         canvasWidth: ecosystemSizes[simulationConfig.ecosystemSize].width,
         canvasHeight: ecosystemSizes[simulationConfig.ecosystemSize].height,
-        seasonalGrowthEffect: seasonalGrowthEffect, // Pass seasonal growth effect
+        seasonalGrowthEffect: weatherEffects.seasonalGrowthEffect, // Pass seasonal growth effect from weather system
+        weatherEffects: weatherEffects, // Pass all weather effects
     };
 
     // Atualiza cada elemento
@@ -173,7 +122,7 @@ function updateSimulation(useGemini, geminiApiKey) {
     const originalLength = ecosystemElements.length;
     ecosystemElements.forEach(element => {
         const healthBefore = element.health;
-        element.update(simulationState, simulationConfig, currentWeather, activeTechEffects); // Pass activeTechEffects
+        element.update(simulationState, simulationConfig, currentWeather, activeTechEffects, weatherEffects); // Pass weather effects
         if(element.health !== healthBefore) hasChanges = true;
     });
     
@@ -255,6 +204,14 @@ function updateSimulation(useGemini, geminiApiKey) {
             }
         }
     }
+    
+    // Update population counts for food web system
+    if(hasChanges) {
+        updatePopulationCounts(ecosystemElements);
+    }
+    
+    // Update social behavior system
+    socialBehaviorSystem.update(ecosystemElements);
     
     // Redesenha a cena e atualiza a UI se houver mudanças
     if(hasChanges) {
@@ -377,34 +334,59 @@ export function addElementAtPoint(point3D, type, multiplier, useGemini, geminiAp
     // Prevent placing sun on the planet surface
     if (type === 'sun') {
         logToObserver("O Sol só pode ser colocado no espaço sideral.");
-        showMessage("O Sol só pode ser colocado no espaço sideral.");
-        return;
+        if (window.feedbackSystem) {
+            window.feedbackSystem.showNotification({
+                type: 'warning',
+                title: 'Posicionamento Inválido',
+                message: 'O Sol só pode ser colocado no espaço sideral.',
+                duration: 3000
+            });
+        }
+        return false;
     }
 
     const { x, y } = convert3DTo2DCoordinates(point3D, simulationConfig);
     const ElementClass = elementClasses[type];
-    if (!ElementClass) return;
+    if (!ElementClass) {
+        logToObserver(`Tipo de elemento desconhecido: ${type}`);
+        return false;
+    }
 
     logToObserver(`Adicionando ${multiplier}x ${type}...`);
-    for (let i = 0; i < multiplier; i++) {
-        const newX = x + (Math.random() - 0.5) * 50; // Adiciona um pouco de dispersão
-        const newY = y + (Math.random() - 0.5) * 50;
-        const id = Date.now() + Math.random();
-        let newElement;
-        // Verifica se é uma classe (tem protótipo) ou uma função fábrica (arrow function, sem protótipo)
-        if (ElementClass.prototype) {
-            newElement = new ElementClass(id, newX, newY);
-        } else {
-            newElement = ElementClass(id, newX, newY);
+    try {
+        for (let i = 0; i < multiplier; i++) {
+            const newX = x + (Math.random() - 0.5) * 50; // Adiciona um pouco de dispersão
+            const newY = y + (Math.random() - 0.5) * 50;
+            const id = Date.now() + Math.random();
+            let newElement;
+            // Verifica se é uma classe (tem protótipo) ou uma função fábrica (arrow function, sem protótipo)
+            if (ElementClass.prototype) {
+                newElement = new ElementClass(id, newX, newY);
+            } else {
+                newElement = ElementClass(id, newX, newY);
+            }
+            ecosystemElements.push(newElement);
+            trackElementCreated(type); // NEW: Track element creation
+            playSFX('elementPlace'); // Play SFX for placing an element
         }
-        ecosystemElements.push(newElement);
-        trackElementCreated(type); // NEW: Track element creation
-        playSFX('elementPlace'); // Play SFX for placing an element
-    }
-    drawEcosystem(); // Redesenha para mostrar o novo elemento
-    
-    if (useGemini && geminiApiKey) {
-        askGeminiForElementInsight(type, simulationConfig, geminiApiKey, logToObserver);
+        drawEcosystem(); // Redesenha para mostrar o novo elemento
+        
+        if (useGemini && geminiApiKey) {
+            askGeminiForElementInsight(type, simulationConfig, geminiApiKey, logToObserver);
+        }
+        
+        return true;
+    } catch (error) {
+        logToObserver(`Erro ao adicionar elemento: ${error.message}`);
+        if (window.feedbackSystem) {
+            window.feedbackSystem.showNotification({
+                type: 'error',
+                title: 'Erro na Colocação',
+                message: 'Não foi possível colocar o elemento.',
+                duration: 3000
+            });
+        }
+        return false;
     }
 }
 
@@ -414,7 +396,10 @@ export function removeElementAtPoint(point3D) {
         ecosystemElements = ecosystemElements.filter(el => el.id !== elementToRemove.id);
         logToObserver(`Elemento ${elementToRemove.type} removido.`);
         drawEcosystem(); // Redesenha para remover o elemento
+        playSFX('elementRemove'); // Play SFX for removing an element
+        return elementToRemove;
     }
+    return null;
 }
 
 export function getElementAtPoint3D(point3D) {
@@ -458,6 +443,9 @@ export function resetSimulation(scenarioId = null) {
         updatePlanetAppearance(currentConfig);
     }
 
+    // Initialize food web system with current elements
+    initFoodWebSystem(ecosystemElements);
+
     drawEcosystem();
     updateSimulationInfo();
     resetAchievementProgress(); // NEW: Reset achievement progress on simulation reset
@@ -493,14 +481,53 @@ export function handleCanvasInteraction(event, isClick, useGemini, geminiApiKey,
 
     if (isClick) {
         if (point3D) {
+            // Convert 3D point to screen coordinates for visual indicators
+            const rect = canvas.getBoundingClientRect();
+            const screenX = rect.left + (event.clientX - rect.left);
+            const screenY = rect.top + (event.clientY - rect.top);
+
             if (placingElement === 'eraser') {
-                removeElementAtPoint(point3D);
+                const removed = removeElementAtPoint(point3D);
+                
+                // Show visual feedback for removal
+                if (window.visualIndicators) {
+                    if (removed) {
+                        window.visualIndicators.showActionFeedback(screenX, screenY, 'damage');
+                        window.feedbackSystem?.showNotification({
+                            type: 'info',
+                            title: 'Elemento Removido',
+                            message: `${removed.type} foi removido do ecossistema`,
+                            duration: 2000
+                        });
+                    } else {
+                        window.visualIndicators.showPlacementResult(screenX, screenY, false, 'eraser');
+                    }
+                }
             } else if (placingElement) {
-                addElementAtPoint(point3D, placingElement, elementMultiplier, useGemini, geminiApiKey);
+                const success = addElementAtPoint(point3D, placingElement, elementMultiplier, useGemini, geminiApiKey);
+                
+                // Show visual feedback for placement
+                if (window.visualIndicators) {
+                    window.visualIndicators.showPlacementResult(screenX, screenY, success, placingElement);
+                    
+                    if (success && window.feedbackSystem) {
+                        const count = elementMultiplier > 1 ? ` (${elementMultiplier}x)` : '';
+                        window.feedbackSystem.showActionFeedback(
+                            `${placingElement} colocado${count}`, 
+                            true, 
+                            'Elemento adicionado ao ecossistema'
+                        );
+                    }
+                }
             } else {
                 // Se nenhum elemento estiver selecionado, talvez inspecionar o elemento existente
                 const elementAtPoint = getElementAtPoint3D(point3D);
                 if (elementAtPoint) {
+                    // Show selection indicator
+                    if (window.visualIndicators) {
+                        window.visualIndicators.showSelectionIndicator(screenX, screenY, 40, 40);
+                    }
+                    
                     if (elementAtPoint.type === 'tribe') {
                         if (showTribeInteractionCallback) {
                             showTribeInteractionCallback(elementAtPoint);
@@ -515,6 +542,35 @@ export function handleCanvasInteraction(event, isClick, useGemini, geminiApiKey,
         }
     } else { // Mouse move
         setCurrentMouse3DPoint(point3D);
+        
+        // Show placement preview if placing element
+        if (point3D && placingElement && placingElement !== 'eraser') {
+            const rect = canvas.getBoundingClientRect();
+            const screenX = rect.left + (event.clientX - rect.left);
+            const screenY = rect.top + (event.clientY - rect.top);
+            
+            if (window.visualIndicators) {
+                window.visualIndicators.showPlacementPreview(screenX, screenY, placingElement);
+            }
+        } else if (window.visualIndicators) {
+            window.visualIndicators.removePlacementPreview();
+        }
+        
+        // Show hover indicator for existing elements
+        if (point3D) {
+            const elementAtPoint = getElementAtPoint3D(point3D);
+            if (elementAtPoint) {
+                const rect = canvas.getBoundingClientRect();
+                const screenX = rect.left + (event.clientX - rect.left);
+                const screenY = rect.top + (event.clientY - rect.top);
+                
+                if (window.visualIndicators) {
+                    window.visualIndicators.showHoverIndicator(screenX, screenY, 35, 35);
+                }
+            } else if (window.visualIndicators) {
+                window.visualIndicators.removeHoverIndicator();
+            }
+        }
     }
 }
 

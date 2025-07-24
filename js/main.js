@@ -10,6 +10,18 @@ import { loadAudio, playBackgroundMusic, pauseBackgroundMusic, playSFX } from '.
 import { scenarios, getScenarioById } from './scenarios.js'; // NEW IMPORT
 import { subscribe, EventTypes } from './systems/eventSystem.js'; // NEW: Event system
 import { initLoggingSystem, info, warning } from './systems/loggingSystem.js'; // NEW: Enhanced logging
+import { initGeneticsPanel, showGeneticsInfo, hideGeneticsPanel, addGeneticsPanelStyles } from './ui/geneticsPanel.js'; // NEW: Genetics panel
+import { uiController } from './ui/uiController.js'; // NEW: Enhanced UI system
+import { analysisTools } from './ui/analysisTools.js'; // NEW: Analysis tools
+import { controlsManager } from './ui/controlsManager.js'; // NEW: Enhanced controls
+import { gestureSystem } from './ui/gestureSystem.js'; // NEW: Gesture recognition
+// import { selectionModes } from './ui/selectionModes.js'; // NEW: Selection modes - Temporarily disabled
+import { shortcutsPanel } from './ui/shortcutsPanel.js'; // NEW: Shortcuts panel
+import { feedbackSystem } from './ui/feedbackSystem.js'; // NEW: Enhanced feedback system
+// import { visualIndicators } from './ui/visualIndicators.js'; // NEW: Visual indicators - Temporarily disabled
+// import { contextualHelp } from './ui/contextualHelp.js'; // NEW: Contextual help - Temporarily disabled
+import { verifyTask4Completion } from './ui/task4-completion-verification.js'; // NEW: Task 4 verification
+import { tooltipDebugger } from './ui/tooltip-debug.js'; // NEW: Tooltip debugging utilities
 
 let leftPanel, rightPanel;
 let useGemini = true;
@@ -50,6 +62,36 @@ function setupEventSubscriptions() {
 function initializeApp() {
     console.log('initializeApp started.');
     
+    // Initialize enhanced UI system
+    uiController.initialize();
+    
+    // Initialize analysis tools
+    analysisTools.initialize();
+    
+    // Initialize enhanced controls system
+    controlsManager.initialize();
+    
+    // Initialize gesture recognition
+    gestureSystem.initialize();
+    
+    // Initialize selection modes
+    // selectionModes.initialize(); // Temporarily disabled to fix rendering issue
+    
+    // Initialize shortcuts panel
+    shortcutsPanel.initialize();
+    
+    // Initialize enhanced feedback system
+    feedbackSystem.initialize();
+    
+    // Make feedbackSystem globally available for debugging
+    window.feedbackSystem = feedbackSystem;
+    
+    // Initialize visual indicators
+    // visualIndicators.initialize(); // Temporarily disabled to fix rendering issue
+    
+    // Initialize contextual help
+    // contextualHelp.initialize(); // Temporarily disabled to fix rendering issue
+    
     // Set up event subscriptions for the UI
     setupEventSubscriptions();
     
@@ -71,6 +113,9 @@ function initializeApp() {
         'tech-tree-btn', 'tech-tree-modal', 'tech-tree-close-btn', 'tech-tree-list',
         'history-btn', 'history-modal', 'history-close-btn', 'history-log', // NEW IDs
         'scenarios-btn', 'scenarios-modal', 'scenarios-close-btn', 'scenarios-list', // NEW Scenario IDs
+        'analysis-btn', // NEW Analysis button
+        'analysis-modal', 'analysis-close-btn', // NEW Analysis modal
+        'shortcuts-btn', // NEW Shortcuts button
         'tribe-interaction-modal', 'tribe-interaction-close-btn', 'tribe-interaction-title',
         'bless-tribe-btn', 'curse-tribe-btn', // NEW Tribe Interaction IDs
         'player-energy-display', // NEW: Player energy display
@@ -149,14 +194,26 @@ function initializeApp() {
         refs.planetStory.textContent = 'Conecte-se ao Gemini para gerar a história do planeta.';
     }
 
-    const canvas = init3DScene(refs.threeJsCanvasContainer, initialConfig);
-    if (loadedCameraState) setCameraState(loadedCameraState); else resetCamera(initialConfig);
+    // Add a small delay to ensure container is properly sized
+    setTimeout(() => {
+        const canvas = init3DScene(refs.threeJsCanvasContainer, initialConfig);
+        if (loadedCameraState) setCameraState(loadedCameraState); else resetCamera(initialConfig);
+        
+        drawEcosystem();
+        setupEventListeners(refs, canvas);
+    }, 100);
     
-    drawEcosystem();
     loadAudio(); // Load all audio files
     startSimulationLoop(useGemini, geminiApiKey);
     playBackgroundMusic(); // Start background music
-    setupEventListeners(refs, canvas);
+    
+    // Make Task 4 verification available in console for testing
+    window.verifyTask4Completion = verifyTask4Completion;
+    console.log('✅ Task 4 verification available: Run verifyTask4Completion() in console');
+    
+    // Make tooltip debugger available
+    window.tooltipDebugger = tooltipDebugger;
+    console.log('🔍 Tooltip debugging available: Run debugTooltips(), testTooltips(), clearTooltips(), fixTooltips(), or tooltipStats() in console');
 }
 
 
@@ -207,7 +264,14 @@ function setupEventListeners(refs, canvas) {
         setSimulationConfig(newConfig);
         updatePlanetAppearance(newConfig);
         drawEcosystem();
-        showMessage('Configuração aplicada!');
+        // Use enhanced feedback system
+        feedbackSystem.showNotification({
+            type: 'success',
+            title: 'Configuração Aplicada',
+            message: 'As novas configurações foram aplicadas ao planeta.',
+            duration: 3000
+        });
+        
         populateConfigForm(refs, newConfig); // Use newConfig here
         if (window.innerWidth <= 1024) refs.leftPanel.classList.remove('active');
         console.log('Config applied.');
@@ -323,6 +387,24 @@ function setupEventListeners(refs, canvas) {
         console.log('Scenarios modal closed.');
     });
 
+    // NEW: Analysis Button
+    refs.analysisBtn.addEventListener('click', () => {
+        analysisTools.showAnalysisModal();
+        console.log('Analysis modal opened.');
+    });
+
+    // NEW: Analysis Modal
+    refs.analysisCloseBtn.addEventListener('click', () => {
+        analysisTools.hideAnalysisModal();
+        console.log('Analysis modal closed.');
+    });
+
+    // NEW: Shortcuts Button
+    refs.shortcutsBtn.addEventListener('click', () => {
+        shortcutsPanel.show();
+        console.log('Shortcuts panel opened.');
+    });
+
     // Element Detail Modal
     refs.elementDetailCloseBtn.addEventListener('click', () => {
         hideModal(refs.elementDetailModal);
@@ -379,7 +461,8 @@ function setupEventListeners(refs, canvas) {
             contentHtml += `</ul>`;
         }
 
-        if (element.type === 'creature' && element.geneSpeed !== undefined) {
+        // Check if the element has the old gene system
+        if (element.type === 'creature' && element.geneSpeed !== undefined && !element.genome) {
             contentHtml += `<p><strong>Genes:</strong></p><ul>
                                <li>Velocidade: ${element.geneSpeed.toFixed(2)}</li>
                                <li>Tamanho: ${element.geneSize.toFixed(2)}</li>
@@ -388,6 +471,20 @@ function setupEventListeners(refs, canvas) {
         }
 
         refs.elementDetailContent.innerHTML = contentHtml;
+        
+        // Initialize genetics panel if it doesn't exist yet
+        if (!document.getElementById('genetics-panel')) {
+            initGeneticsPanel(refs.elementDetailContent);
+            addGeneticsPanelStyles();
+        }
+        
+        // Show genetics info if the element has a genome
+        if (element.genome) {
+            showGeneticsInfo(element);
+        } else {
+            hideGeneticsPanel();
+        }
+        
         showModal(refs.elementDetailModal);
     }
 
@@ -552,8 +649,19 @@ function populateScenariosModal(scenariosListElement) {
 let currentWeatherSpan; // Declare a variable to hold the span reference
 
 export function updateWeatherDisplay(weather) {
-    if (currentWeatherSpan) {
-        currentWeatherSpan.textContent = `${weather.emoji} ${weather.type.charAt(0).toUpperCase() + weather.type.slice(1)}`;
+    if (currentWeatherSpan && weather) {
+        const weatherName = weather.name || (weather.type ? weather.type.charAt(0).toUpperCase() + weather.type.slice(1) : 'Unknown');
+        const weatherEmoji = weather.emoji || '☁️';
+        currentWeatherSpan.textContent = `${weatherEmoji} ${weatherName}`;
+        
+        // Add weather intensity indicator for extreme weather
+        if (weather.isExtreme) {
+            currentWeatherSpan.style.color = '#ff4444';
+            currentWeatherSpan.style.fontWeight = 'bold';
+        } else {
+            currentWeatherSpan.style.color = '';
+            currentWeatherSpan.style.fontWeight = '';
+        }
     }
 }
 

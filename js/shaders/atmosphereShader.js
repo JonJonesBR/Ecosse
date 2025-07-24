@@ -12,10 +12,12 @@ export const atmosphereVertexShader = `
   varying vec3 vViewPosition;
   varying float vViewAngle;
   varying vec2 vUv;
+  varying vec3 vPosition;
   
   void main() {
     vNormal = normalize(normalMatrix * normal);
     vUv = uv;
+    vPosition = position;
     
     vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
     vViewPosition = -mvPosition.xyz;
@@ -41,6 +43,7 @@ export const atmosphereFragmentShader = `
   varying vec3 vViewPosition;
   varying float vViewAngle;
   varying vec2 vUv;
+  varying vec3 vPosition;
   
   // Rayleigh scattering approximation
   vec3 rayleighScattering(float cosAngle, vec3 color) {
@@ -75,7 +78,7 @@ export const atmosphereFragmentShader = `
     float timeVariation = sin(vUv.y * 10.0 + time * 0.2) * 0.05 + 0.95;
     
     // Calculate final color with height-based gradient
-    float heightFactor = position.y / (planetRadius + atmosphereThickness);
+    float heightFactor = vPosition.y / (planetRadius + atmosphereThickness);
     vec3 finalColor = mix(atmosphereColor, scatteringColor, clamp(heightFactor + 0.5, 0.0, 1.0)) * timeVariation;
     
     // Apply intensity for rim effect

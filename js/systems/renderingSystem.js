@@ -93,10 +93,14 @@ class RenderingSystem {
         this.scene = new THREE.Scene();
         this.scene.background = new THREE.Color(0x0f172a);
         
+        // Ensure container has proper dimensions
+        const containerWidth = container.clientWidth || 800;
+        const containerHeight = container.clientHeight || 600;
+        
         // Create camera
         this.camera = new THREE.PerspectiveCamera(
             75, 
-            container.clientWidth / container.clientHeight, 
+            containerWidth / containerHeight, 
             1, 
             1000
         );
@@ -108,7 +112,11 @@ class RenderingSystem {
             precision: this.config.qualityLevel === 'low' ? 'lowp' : 'mediump'
         });
         
-        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        // Ensure container has proper dimensions
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 600;
+        
+        this.renderer.setSize(width, height);
         this.renderer.setPixelRatio(
             Math.min(
                 window.devicePixelRatio, 
@@ -474,13 +482,17 @@ class RenderingSystem {
     onWindowResize(container) {
         if (!this.camera || !this.renderer) return;
         
-        this.camera.aspect = container.clientWidth / container.clientHeight;
+        // Ensure container has proper dimensions
+        const width = container.clientWidth || 800;
+        const height = container.clientHeight || 600;
+        
+        this.camera.aspect = width / height;
         this.camera.updateProjectionMatrix();
-        this.renderer.setSize(container.clientWidth, container.clientHeight);
+        this.renderer.setSize(width, height);
         
         // Update composer if it exists
         if (this.composer) {
-            this.composer.setSize(container.clientWidth, container.clientHeight);
+            this.composer.setSize(width, height);
         }
     }
     

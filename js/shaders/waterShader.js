@@ -82,9 +82,9 @@ export const waterFragmentShader = `
     dir3 = normalize(dir3);
     
     // Sample the cubemap with the proper function
-    float r = textureCube(envMap, dir1).r;
-    float g = textureCube(envMap, dir2).g;
-    float b = textureCube(envMap, dir3).b;
+    float r = texture(envMap, dir1).r;
+    float g = texture(envMap, dir2).g;
+    float b = texture(envMap, dir3).b;
     
     return vec3(r, g, b);
   }
@@ -102,7 +102,7 @@ export const waterFragmentShader = `
     vec3 reflectionVector = reflect(viewDirection, normal);
     
     // Sample environment map for reflection
-    vec3 reflection = textureCube(envMap, reflectionVector).rgb;
+    vec3 reflection = texture(envMap, reflectionVector).rgb;
     
     // Calculate fresnel effect for reflection strength
     float fresnel = pow(1.0 - max(0.0, dot(normal, viewDirection)), 4.0);
@@ -185,7 +185,7 @@ export function createWaterMaterial(options = {}) {
  * @returns {THREE.CubeTexture} - The default environment map
  */
 function createDefaultEnvMap() {
-  // Create a dummy cube texture
+  // Create a simple cube texture with sky blue color
   const size = 16;
   const data = new Uint8Array(size * size * 4);
   
@@ -197,11 +197,17 @@ function createDefaultEnvMap() {
     data[i + 3] = 255; // A
   }
   
-  const texture = new THREE.DataTexture(data, size, size);
-  texture.format = THREE.RGBAFormat;
-  texture.needsUpdate = true;
+  // Create 6 faces for the cube texture
+  const faces = [];
+  for (let i = 0; i < 6; i++) {
+    faces.push(new THREE.DataTexture(data, size, size));
+  }
   
-  return texture;
+  const cubeTexture = new THREE.CubeTexture(faces);
+  cubeTexture.format = THREE.RGBAFormat;
+  cubeTexture.needsUpdate = true;
+  
+  return cubeTexture;
 }
 
 /**

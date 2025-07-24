@@ -199,6 +199,8 @@ export const EventTypes = {
   WEATHER_CHANGED: 'environment:weather_changed',
   SEASON_CHANGED: 'environment:season_changed',
   TIME_OF_DAY_CHANGED: 'environment:time_of_day_changed',
+  EXTREME_WEATHER: 'environment:extreme_weather',
+  MICROCLIMATE_CHANGED: 'environment:microclimate_changed',
   
   // Player events
   PLAYER_ENERGY_CHANGED: 'player:energy_changed',
@@ -221,7 +223,25 @@ export const EventTypes = {
   WARNING_OCCURRED: 'system:warning_occurred',
   STATE_CHANGED: 'system:state_changed',
   RESOURCE_LOADED: 'system:resource_loaded',
-  PERFORMANCE_ISSUE: 'system:performance_issue'
+  PERFORMANCE_ISSUE: 'system:performance_issue',
+  
+  // Food web events
+  PREDATION_ATTEMPT: 'foodweb:predation_attempt',
+  PREDATION_SUCCESS: 'foodweb:predation_success',
+  PREDATION_FAILURE: 'foodweb:predation_failure',
+  POPULATION_CHANGE: 'foodweb:population_change',
+  TROPHIC_CASCADE: 'foodweb:trophic_cascade',
+  GENETIC_REPRODUCTION: 'genetics:reproduction',
+  MUTATION_OCCURRED: 'genetics:mutation',
+  
+  // Social behavior events
+  GROUP_FORMED: 'social:group_formed',
+  GROUP_DISBANDED: 'social:group_disbanded',
+  TERRITORY_ESTABLISHED: 'social:territory_established',
+  TERRITORIAL_CONFLICT: 'social:territorial_conflict',
+  TERRITORY_INTRUSION: 'social:territory_intrusion',
+  COOPERATION_EVENT: 'social:cooperation_event',
+  LEADERSHIP_CHANGE: 'social:leadership_change'
 };
 
 // For backward compatibility, export the functions directly

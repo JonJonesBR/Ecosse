@@ -503,6 +503,14 @@ class ShaderManager {
     
     loggingSystem.info(`Weather updated to: ${weatherType}`);
   }
+
+  /**
+   * Update weather effects (alias for updateWeather for compatibility)
+   * @param {string} weatherType - Type of weather
+   */
+  updateWeatherEffects(weatherType) {
+    this.updateWeather(weatherType);
+  }
   
   /**
    * Update planet configuration

@@ -172,7 +172,7 @@ export const cloudFragmentShader = `
   
   void main() {
     // Sample cloud texture or create procedural cloud
-    vec4 texColor = texture2D(cloudTexture, vUv);
+    vec4 texColor = texture(cloudTexture, vUv);
     
     // Adjust opacity based on density and position
     float alpha = texColor.a * vAlpha * cloudDensity;
