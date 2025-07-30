@@ -1,12 +1,20 @@
+import { LoadingDebugger } from './debug-loading.js';
 import { initUIDomReferences, showMessage, hideMessageBox, logToObserver, showModal, hideModal } from './utils.js';
-import { init3DScene, updatePlanetAppearance, get3DIntersectionPoint, getCameraState, setCameraState, resetCamera } from './planetRenderer.js';
+import { domErrorHandler } from './utils/domErrorHandler.js';
+import { get3DIntersectionPoint, getCameraState, setCameraState } from './planetRenderer.js';
+import { enhancedInit3DScene as init3DScene, enhancedUpdatePlanetAppearance as updatePlanetAppearance, enhancedResetCamera as resetCamera } from './planet-renderer-integration.js';
+import { coreLayoutSystem } from './systems/coreLayoutSystem.js';
 import { initSimulationUIReferences, setSimulationConfig, setEcosystemElements, getEcosystemElements, getSimulationConfig, drawEcosystem, startSimulationLoop, pauseSimulationLoop, toggleTimeLapse, setPlacingElement, setElementMultiplier, setCurrentMouse3DPoint, addElementAtPoint, removeElementAtPoint, getElementAtPoint3D, resetSimulation, handleCanvasInteraction, blessTribe, curseTribe } from './simulation.js';
 import { saveSimulation, loadSimulation, generateSeed, loadSimulationFromSeed } from './persistence.js';
 import { setupConfigPanelListeners, getCurrentConfig, populateConfigForm } from './config.js';
-import { askGeminiForEcosystemAnalysis, askGeminiForPlanetStory } from './geminiApi.js';
+import { askGeminiForEcosystemAnalysis, askGeminiForPlanetStory, initializeEnhancedAnalysis } from './geminiApi.js';
 import { getAchievements } from './achievements.js'; // NEW IMPORT
 import { getTechnologies, unlockTechnology, getUnlockedTechnologies } from './techTree.js'; // NEW IMPORT
+import { initEnergySystem, initEnergyDisplay, getPlayerEnergy, getPlayerResources, performIntervention, canAffordIntervention } from './energySystem.js'; // NEW IMPORT
 import { loadAudio, playBackgroundMusic, pauseBackgroundMusic, playSFX } from './audioManager.js'; // NEW IMPORT
+import { adaptiveMusicSystem } from './systems/adaptiveMusicSystem.js'; // NEW: Adaptive music system
+import { spatialAudioSystem } from './systems/spatialAudioSystem.js'; // NEW: Spatial audio system
+import { testSpatialAudioSystem } from './test-spatial-audio.js'; // NEW: Spatial audio tests
 import { scenarios, getScenarioById } from './scenarios.js'; // NEW IMPORT
 import { subscribe, EventTypes } from './systems/eventSystem.js'; // NEW: Event system
 import { initLoggingSystem, info, warning } from './systems/loggingSystem.js'; // NEW: Enhanced logging
@@ -22,6 +30,21 @@ import { feedbackSystem } from './ui/feedbackSystem.js'; // NEW: Enhanced feedba
 // import { contextualHelp } from './ui/contextualHelp.js'; // NEW: Contextual help - Temporarily disabled
 import { verifyTask4Completion } from './ui/task4-completion-verification.js'; // NEW: Task 4 verification
 import { tooltipDebugger } from './ui/tooltip-debug.js'; // NEW: Tooltip debugging utilities
+import { floatingControlsPanel } from './ui/floatingControlsPanel.js'; // NEW: Floating controls panel
+import { adaptiveUIController } from './ui/adaptiveUIController.js'; // NEW: Adaptive UI controller
+import { panelVisibilityManager } from './ui/panelVisibilityManager.js'; // NEW: Panel visibility manager
+import { rendererLayoutIntegration } from './ui/rendererLayoutIntegration.js'; // NEW: Renderer layout integration
+import { animationController } from './ui/animationController.js'; // NEW: Animation controller
+import { layoutErrorHandler } from './ui/layoutErrorHandler.js'; // NEW: Layout error handler
+import './ui/layoutConfigurationIntegration.js'; // NEW: Layout configuration system
+import { testLayoutRestructure } from './test-layout-restructure.js'; // NEW: Layout restructure tests
+import { verifyTask2Completion } from './verify-task2-completion.js'; // NEW: Task 2 verification
+import { narrativeSystem } from './systems/narrativeSystem.js'; // NEW: Narrative system
+import { tribalCultureSystem } from './systems/tribalCultureSystem.js'; // NEW: Tribal culture system
+import { eventSystem } from './systems/eventSystem.js'; // NEW: Event system reference
+import { performanceMonitor } from './ui/performanceMonitor.js'; // NEW: Performance monitoring system
+import { performanceOptimizer } from './performanceOptimizer.js'; // NEW: Performance optimization system
+import './ui/elementControlsOrganizer.js'; // NEW: Element controls organization system
 
 let leftPanel, rightPanel;
 let useGemini = true;
@@ -62,8 +85,44 @@ function setupEventSubscriptions() {
 function initializeApp() {
     console.log('initializeApp started.');
     
+    // Start loading debug
+    window.loadingDebugger.logStep('Application Initialization', 'started');
+    window.loadingDebugger.checkForInfiniteLoops();
+    
+    // Initialize DOM Error Handler first to prevent DOM-related errors
+    window.loadingDebugger.logStep('DOM Error Handler', 'started');
+    try {
+        domErrorHandler.initialize();
+        // Run auto-fix for common issues
+        domErrorHandler.autoFixCommonIssues();
+        window.loadingDebugger.logStep('DOM Error Handler', 'completed');
+    } catch (error) {
+        console.error('❌ DOM Error Handler initialization failed:', error);
+        window.loadingDebugger.logError('DOM Error Handler', error);
+    }
+    
+    // Initialize core layout system first
+    window.loadingDebugger.logStep('Core Layout System', 'started');
+    coreLayoutSystem.initialize().then(() => {
+        console.log('✅ Core layout system ready');
+        window.loadingDebugger.logStep('Core Layout System', 'completed');
+    }).catch(error => {
+        console.error('❌ Core layout system initialization failed:', error);
+        window.loadingDebugger.logError('Core Layout System', error);
+    });
+    
     // Initialize enhanced UI system
     uiController.initialize();
+    
+    // Initialize adaptive UI controller
+    window.loadingDebugger.logStep('Adaptive UI Controller', 'started');
+    try {
+        adaptiveUIController.initialize();
+        window.loadingDebugger.logStep('Adaptive UI Controller', 'completed');
+    } catch (error) {
+        console.warn('⚠️ Adaptive UI controller initialization failed:', error);
+        window.loadingDebugger.logError('Adaptive UI Controller', error);
+    }
     
     // Initialize analysis tools
     analysisTools.initialize();
@@ -83,8 +142,84 @@ function initializeApp() {
     // Initialize enhanced feedback system
     feedbackSystem.initialize();
     
+    // Initialize floating controls panel (simplified)
+    window.loadingDebugger.logStep('Floating Controls Panel', 'started');
+    try {
+        floatingControlsPanel.init();
+        window.loadingDebugger.logStep('Floating Controls Panel', 'completed');
+    } catch (error) {
+        console.warn('⚠️ Floating controls panel initialization failed, using fallback:', error);
+        window.loadingDebugger.logError('Floating Controls Panel', error);
+        // Continue without floating controls panel
+    }
+    
+    // Initialize panel visibility manager
+    window.loadingDebugger.logStep('Panel Visibility Manager', 'started');
+    try {
+        panelVisibilityManager.initialize();
+        window.loadingDebugger.logStep('Panel Visibility Manager', 'completed');
+    } catch (error) {
+        console.warn('⚠️ Panel visibility manager initialization failed:', error);
+        window.loadingDebugger.logError('Panel Visibility Manager', error);
+    }
+    
+    // Initialize animation controller
+    window.loadingDebugger.logStep('Animation Controller', 'started');
+    try {
+        animationController.initialize();
+        window.loadingDebugger.logStep('Animation Controller', 'completed');
+    } catch (error) {
+        console.warn('⚠️ Animation controller initialization failed:', error);
+        window.loadingDebugger.logError('Animation Controller', error);
+    }
+    
     // Make feedbackSystem globally available for debugging
     window.feedbackSystem = feedbackSystem;
+    
+    // Initialize narrative system
+    narrativeSystem.initialize();
+    
+    // Initialize tribal culture system
+    tribalCultureSystem.initialize();
+    
+    // Initialize adaptive music system
+    adaptiveMusicSystem.initialize();
+    
+    // Initialize performance optimizer
+    window.loadingDebugger.logStep('Performance Optimizer', 'started');
+    try {
+        performanceOptimizer.initialize();
+        window.loadingDebugger.logStep('Performance Optimizer', 'completed');
+    } catch (error) {
+        console.warn('⚠️ Performance optimizer initialization failed:', error);
+        window.loadingDebugger.logError('Performance Optimizer', error);
+    }
+    
+    // Make systems globally available for debugging and integration
+    window.narrativeSystem = narrativeSystem;
+    window.tribalCultureSystem = tribalCultureSystem;
+    window.eventSystem = eventSystem;
+    window.adaptiveMusicSystem = adaptiveMusicSystem;
+    window.adaptiveUIController = adaptiveUIController;
+    window.panelVisibilityManager = panelVisibilityManager;
+    window.rendererLayoutIntegration = rendererLayoutIntegration;
+    window.animationController = animationController;
+    window.layoutErrorHandler = layoutErrorHandler;
+    window.performanceOptimizer = performanceOptimizer;
+    
+    // Import and make special events system available for debugging
+    import('./systems/specialEventsSystem.js').then(module => {
+        window.specialEventsSystem = module.specialEventsSystem;
+        console.log('🌟 Special Events System available: Use specialEventsSystem.forceEvent("event_type", simulationState) to trigger events');
+        console.log('Available events:', Object.keys(module.specialEventsSystem.eventDefinitions));
+    });
+    
+    // Import and make seasonal events system available for debugging
+    import('./systems/seasonalEventsSystem.js').then(module => {
+        window.seasonalEventsSystem = module.seasonalEventsSystem;
+        console.log('🍂 Seasonal Events System available: Use seasonalEventsSystem.forceSeasonalEvent("planet_type", "season", "event_name", simulationState) to trigger seasonal events');
+        console.log('Available biomes:', Object.keys(module.seasonalEventsSystem.biomeSeasonalEvents));
+    });
     
     // Initialize visual indicators
     // visualIndicators.initialize(); // Temporarily disabled to fix rendering issue
@@ -104,7 +239,7 @@ function initializeApp() {
         'temperature-value', 'water-presence', 'water-presence-value', 'soil-type', 'minerals',
         'ecosystem-size', 'randomize-config-btn', 'preset-sandbox', 'apply-config-btn', 'right-panel',
         'toggle-right-panel', 'ecosystem-stability', 'ecosystem-biodiversity', 'ecosystem-resources',
-        'gemini-insights', 'bottom-panel', 'play-pause-btn', 'time-lapse-btn', 'save-sim-btn',
+        'gemini-insights', 'trigger-enhanced-analysis', 'bottom-panel', 'play-pause-btn', 'time-lapse-btn', 'save-sim-btn',
         'load-sim-btn', 'share-sim-btn', 'reset-sim-btn', 'reset-camera-btn', 'element-detail-modal',
         'element-detail-close-btn', 'element-detail-title', 'element-detail-content', 'gemini-api-modal',
         'gemini-api-close-btn', 'gemini-api-key-input', 'save-gemini-key-btn',
@@ -139,6 +274,10 @@ function initializeApp() {
     initUIDomReferences(refs.messageBox, refs.messageText, refs.observerLog, refs.messageOkBtn);
     
     initSimulationUIReferences(refs.ecosystemStability, refs.ecosystemBiodiversity, refs.ecosystemResources, refs.geminiInsights, refs.playerEnergyDisplay, refs.currentSeasonDisplay, showModal, hideModal);
+    
+    // Initialize energy system
+    initEnergySystem();
+    initEnergyDisplay(refs.playerEnergyDisplay);
 
     const savedApiKey = localStorage.getItem('geminiApiKey');
     if (refs.geminiApiKeyInput && savedApiKey) {
@@ -195,17 +334,72 @@ function initializeApp() {
     }
 
     // Add a small delay to ensure container is properly sized
-    setTimeout(() => {
-        const canvas = init3DScene(refs.threeJsCanvasContainer, initialConfig);
-        if (loadedCameraState) setCameraState(loadedCameraState); else resetCamera(initialConfig);
-        
-        drawEcosystem();
-        setupEventListeners(refs, canvas);
+    setTimeout(async () => {
+        try {
+            window.loadingDebugger.logStep('3D Scene Initialization', 'started');
+            const canvas = await init3DScene(refs.threeJsCanvasContainer, initialConfig);
+            window.loadingDebugger.logStep('3D Scene Initialization', 'completed');
+            
+            window.loadingDebugger.logStep('Camera Setup', 'started');
+            if (loadedCameraState) setCameraState(loadedCameraState); else resetCamera(initialConfig);
+            window.loadingDebugger.logStep('Camera Setup', 'completed');
+            
+            window.loadingDebugger.logStep('Ecosystem Drawing', 'started');
+            drawEcosystem();
+            window.loadingDebugger.logStep('Ecosystem Drawing', 'completed');
+            
+            window.loadingDebugger.logStep('Event Listeners Setup', 'started');
+            setupEventListeners(refs, canvas);
+            window.loadingDebugger.logStep('Event Listeners Setup', 'completed');
+        } catch (error) {
+            console.error('Failed to initialize 3D scene:', error);
+            window.loadingDebugger.logError('3D Scene Initialization', error);
+            // Show error message to user
+            refs.threeJsCanvasContainer.innerHTML = `
+                <div style="
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    background: #1e293b;
+                    color: white;
+                    text-align: center;
+                    padding: 20px;
+                ">
+                    <div>
+                        <h3>🚫 Erro na Renderização 3D</h3>
+                        <p>Não foi possível inicializar o renderizador do planeta.</p>
+                        <button onclick="location.reload()" style="
+                            background: #3b82f6;
+                            color: white;
+                            border: none;
+                            padding: 8px 16px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            margin-top: 10px;
+                        ">Recarregar</button>
+                    </div>
+                </div>
+            `;
+        }
     }, 100);
     
     loadAudio(); // Load all audio files
+    
+    // Initialize spatial audio system
+    spatialAudioSystem.initialize().then(() => {
+        console.log('✅ Spatial audio system initialized');
+    }).catch(error => {
+        console.warn('⚠️ Spatial audio system initialization failed:', error);
+    });
+    
+    window.loadingDebugger.logStep('Simulation Loop', 'started');
     startSimulationLoop(useGemini, geminiApiKey);
-    playBackgroundMusic(); // Start background music
+    window.loadingDebugger.logStep('Simulation Loop', 'completed');
+    
+    // Start adaptive music instead of basic background music
+    // playBackgroundMusic(); // Replaced by adaptive music system
     
     // Make Task 4 verification available in console for testing
     window.verifyTask4Completion = verifyTask4Completion;
@@ -214,6 +408,82 @@ function initializeApp() {
     // Make tooltip debugger available
     window.tooltipDebugger = tooltipDebugger;
     console.log('🔍 Tooltip debugging available: Run debugTooltips(), testTooltips(), clearTooltips(), fixTooltips(), or tooltipStats() in console');
+    
+    // Make spatial audio test available
+    window.testSpatialAudio = testSpatialAudioSystem;
+    console.log('🔊 Spatial audio testing available: Run testSpatialAudio() in console');
+    
+    // Load quick planet tests
+    import('./quick-planet-test.js').then(() => {
+        console.log('🧪 Quick planet tests loaded: Run quickPlanetTest() or forceReloadPlanet() in console');
+    });
+    
+    // Load layout system tests
+    import('./test-layout-system.js').then(() => {
+        console.log('🧪 Layout system tests loaded: Run testLayoutSystem() in console');
+    });
+    
+    // Load responsive canvas tests
+    import('./test-responsive-canvas.js').then(() => {
+        console.log('🧪 Responsive canvas tests loaded: Run testResponsiveCanvas(), testCanvasResizeIntegration(), or testViewportSizes() in console');
+    });
+    
+    // Load Task 4 verification
+    import('./verify-task4-completion.js').then(() => {
+        console.log('🔍 Task 4 verification loaded: Run verifyTask4Completion() in console');
+    });
+    
+    // Load Panel Visibility System tests
+    import('./test-panel-visibility-system.js').then(() => {
+        console.log('🧪 Panel Visibility System tests loaded: Run testPanelVisibilitySystem() in console');
+    });
+    
+    // Load Renderer Layout Integration tests
+    import('./test-renderer-layout-integration.js').then(() => {
+        console.log('🧪 Renderer Layout Integration tests loaded: Run testRendererLayoutIntegration() in console');
+    });
+    
+    // Load Adaptive UI tests
+    import('./test-adaptive-ui.js').then(() => {
+        console.log('🧪 Adaptive UI tests loaded: Run testAdaptiveUI(), testTouchControls(), testViewportChanges(), or getAdaptiveUIMetrics() in console');
+    });
+    
+    // Load DOM fix tests
+    import('./test-dom-fixes.js').then(() => {
+        console.log('🧪 DOM fix tests loaded: Run testDOMFixes(), testSpecificErrorScenarios(), or validateDOMFixes() in console');
+    });
+    
+    // Load Performance Optimizer tests
+    import('./test-performance-optimizer.js').then(() => {
+        console.log('🧪 Performance Optimizer tests loaded: Run testPerformanceOptimizer() in console');
+    });
+    
+    // Load Performance Optimization verification
+    import('./verify-performance-optimization.js').then(() => {
+        console.log('🔍 Performance Optimization verification loaded: Run verifyPerformanceOptimization() in console');
+    });
+    
+    // Add helper function for testing special events
+    window.triggerRandomEvent = function() {
+        if (window.specialEventsSystem) {
+            const eventTypes = Object.keys(window.specialEventsSystem.eventDefinitions);
+            const randomEvent = eventTypes[Math.floor(Math.random() * eventTypes.length)];
+            const simulationState = {
+                elements: getEcosystemElements(),
+                newElements: [],
+                config: getSimulationConfig(),
+                canvasWidth: 800,
+                canvasHeight: 450
+            };
+            window.specialEventsSystem.forceEvent(randomEvent, simulationState);
+            console.log(`🌟 Triggered random event: ${randomEvent}`);
+        }
+    };
+    
+    console.log('🎲 Special Events Testing: Run triggerRandomEvent() to test random events');
+    
+    // Mark initialization as complete
+    window.loadingDebugger.complete();
 }
 
 
@@ -258,6 +528,19 @@ function setupEventListeners(refs, canvas) {
         console.log('Gemini API key saved.');
     });
 
+    // Enhanced Analysis Button
+    refs.triggerEnhancedAnalysis.addEventListener('click', () => {
+        if (!geminiApiKey) {
+            showModal(refs.geminiApiModal);
+            return;
+        }
+        
+        const currentConfig = getSimulationConfig();
+        const currentElements = getEcosystemElements();
+        initializeEnhancedAnalysis(currentConfig, currentElements, geminiApiKey, refs.geminiInsights, logToObserver);
+        console.log('Enhanced analysis triggered.');
+    });
+
     // Configurações
     setupConfigPanelListeners(refs, () => {
         const newConfig = getCurrentConfig(refs);
@@ -273,7 +556,12 @@ function setupEventListeners(refs, canvas) {
         });
         
         populateConfigForm(refs, newConfig); // Use newConfig here
-        if (window.innerWidth <= 1024) refs.leftPanel.classList.remove('active');
+        
+        // Dispatch config applied event for panel manager
+        document.dispatchEvent(new CustomEvent('configApplied', {
+            detail: { config: newConfig }
+        }));
+        
         console.log('Config applied.');
     });
 

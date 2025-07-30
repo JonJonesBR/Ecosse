@@ -25,6 +25,33 @@ class FeedbackSystem {
     }
 
     /**
+     * Utility method to safely get an Element from an event target
+     * Handles cases where event.target might be a text node or non-Element
+     */
+    getElementFromEventTarget(eventTarget) {
+        try {
+            if (!eventTarget) return null;
+            
+            let targetElement = eventTarget;
+            
+            // If it's a text node, get the parent element
+            if (targetElement.nodeType === Node.TEXT_NODE) {
+                targetElement = targetElement.parentElement;
+            }
+            
+            // Check if it's an Element with the closest method
+            if (!targetElement || typeof targetElement.closest !== 'function') {
+                return null;
+            }
+            
+            return targetElement;
+        } catch (error) {
+            console.warn('FeedbackSystem: Error getting element from event target:', error);
+            return null;
+        }
+    }
+
+    /**
      * Initialize the feedback system
      */
     initialize() {
@@ -37,6 +64,90 @@ class FeedbackSystem {
         this.initialized = true;
         
         console.log('Feedback system initialized');
+    }
+    
+    /**
+     * Handle layout changes from the layout manager
+     * @param {Object} layoutInfo - Layout change information
+     */
+    onLayoutChange(layoutInfo) {
+        try {
+            console.log('💬 Feedback System received layout change:', layoutInfo.viewportType);
+            
+            // Adjust notification positioning for different viewports
+            this.adjustNotificationPositioning(layoutInfo.viewportType);
+            
+            // Update tooltip behavior for touch devices
+            if (layoutInfo.viewportType === 'mobile') {
+                this.enableMobileTooltips();
+            } else {
+                this.enableDesktopTooltips();
+            }
+            
+            // Reposition active notifications
+            this.repositionActiveNotifications();
+            
+        } catch (error) {
+            console.error('❌ Error handling layout change in Feedback System:', error);
+        }
+    }
+    
+    /**
+     * Adjust notification positioning for viewport
+     * @param {string} viewportType - Current viewport type
+     */
+    adjustNotificationPositioning(viewportType) {
+        const container = document.getElementById('notification-container');
+        if (!container) return;
+        
+        switch (viewportType) {
+            case 'mobile':
+                container.style.top = '10px';
+                container.style.left = '10px';
+                container.style.right = '10px';
+                container.style.width = 'auto';
+                break;
+            case 'tablet':
+                container.style.top = '20px';
+                container.style.right = '20px';
+                container.style.left = 'auto';
+                container.style.width = '350px';
+                break;
+            case 'desktop':
+                container.style.top = '20px';
+                container.style.right = '20px';
+                container.style.left = 'auto';
+                container.style.width = '400px';
+                break;
+        }
+    }
+    
+    /**
+     * Enable mobile-friendly tooltips
+     */
+    enableMobileTooltips() {
+        // Disable hover tooltips on mobile, use tap instead
+        document.body.classList.add('mobile-tooltips');
+    }
+    
+    /**
+     * Enable desktop tooltips
+     */
+    enableDesktopTooltips() {
+        document.body.classList.remove('mobile-tooltips');
+    }
+    
+    /**
+     * Reposition active notifications after layout change
+     */
+    repositionActiveNotifications() {
+        // Force recalculation of notification positions
+        this.notifications.forEach((notification, index) => {
+            if (notification.element && notification.element.parentNode) {
+                // Trigger reflow to update positions
+                notification.element.style.transform = `translateY(${index * 70}px)`;
+            }
+        });
     }
 
     /**
@@ -408,9 +519,20 @@ class FeedbackSystem {
         
         // Clear tooltips when clicking elsewhere
         document.addEventListener('click', (event) => {
-            const tooltipElement = event.target.closest('[data-tooltip]');
-            if (!tooltipElement) {
-                this.clearAllTooltips();
+            try {
+                const targetElement = this.getElementFromEventTarget(event.target);
+                if (!targetElement) {
+                    this.clearAllTooltips();
+                    return;
+                }
+                
+                const tooltipElement = targetElement.closest('[data-tooltip]');
+                if (!tooltipElement) {
+                    this.clearAllTooltips();
+                }
+            } catch (error) {
+                console.warn('FeedbackSystem: Error in click event handler:', error);
+                this.clearAllTooltips(); // Fallback to clear tooltips
             }
         });
         
@@ -730,8 +852,12 @@ class FeedbackSystem {
      * Handle tooltip show on mouseover
      */
     handleTooltipShow(event) {
-        const element = event.target.closest('[data-tooltip]');
-        if (!element) return;
+        try {
+            const targetElement = this.getElementFromEventTarget(event?.target);
+            if (!targetElement) return;
+            
+            const element = targetElement.closest('[data-tooltip]');
+            if (!element) return;
 
         // Prevent showing tooltip if already showing for this element
         const tooltipId = element.dataset.tooltipId;
@@ -752,22 +878,32 @@ class FeedbackSystem {
         }
 
         this.showTooltip(element, options);
+        } catch (error) {
+            console.warn('FeedbackSystem: Error in handleTooltipShow:', error);
+        }
     }
 
     /**
      * Handle tooltip hide on mouseout
      */
     handleTooltipHide(event) {
-        const element = event.target.closest('[data-tooltip]');
-        if (!element) return;
+        try {
+            const targetElement = this.getElementFromEventTarget(event?.target);
+            if (!targetElement) return;
+            
+            const element = targetElement.closest('[data-tooltip]');
+            if (!element) return;
 
-        // Check if mouse is actually leaving the element (not just moving to a child)
-        const relatedTarget = event.relatedTarget;
-        if (relatedTarget && element.contains(relatedTarget)) {
-            return; // Mouse moved to child element, don't hide tooltip
+            // Check if mouse is actually leaving the element (not just moving to a child)
+            const relatedTarget = event.relatedTarget;
+            if (relatedTarget && element.contains && element.contains(relatedTarget)) {
+                return; // Mouse moved to child element, don't hide tooltip
+            }
+
+            this.hideTooltip(element);
+        } catch (error) {
+            console.warn('FeedbackSystem: Error in handleTooltipHide:', error);
         }
-
-        this.hideTooltip(element);
     }
 
     /**

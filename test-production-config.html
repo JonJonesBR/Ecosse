@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Production Config Manager Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        .test-section {
+            background: #2a2a2a;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { color: #4ade80; }
+        .warning { color: #fbbf24; }
+        .error { color: #f87171; }
+        .info { color: #60a5fa; }
+        pre {
+            background: #000;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Production Configuration Manager Test</h1>
+    
+    <div class="test-section">
+        <h2>Environment Detection</h2>
+        <p>Current environment: <span id="environment" class="info"></span></p>
+        <p>Hostname: <span id="hostname" class="info"></span></p>
+        <p>Protocol: <span id="protocol" class="info"></span></p>
+    </div>
+
+    <div class="test-section">
+        <h2>Configuration</h2>
+        <pre id="config"></pre>
+    </div>
+
+    <div class="test-section">
+        <h2>Resource Loading Test</h2>
+        <div id="resource-tests"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Performance Monitoring</h2>
+        <p>Page load time: <span id="load-time" class="info">Calculating...</span></p>
+        <p>Resources loaded: <span id="resources-loaded" class="info">Checking...</span></p>
+    </div>
+
+    <script src="js/productionConfigManager.js"></script>
+    <script>
+        // Test the Production Configuration Manager
+        document.addEventListener('DOMContentLoaded', async () => {
+            console.log('Starting Production Config Manager tests...');
+            
+            // Create instance
+            const configManager = new ProductionConfigManager();
+            
+            // Display environment info
+            document.getElementById('environment').textContent = configManager.getEnvironment();
+            document.getElementById('hostname').textContent = window.location.hostname;
+            document.getElementById('protocol').textContent = window.location.protocol;
+            
+            // Display configuration
+            document.getElementById('config').textContent = JSON.stringify(configManager.getConfiguration(), null, 2);
+            
+            // Test resource loading
+            await testResourceLoading(configManager);
+            
+            // Initialize the manager
+            await configManager.initialize();
+            
+            // Monitor performance
+            monitorPerformance();
+            
+            console.log('Production Config Manager tests completed');
+        });
+
+        async function testResourceLoading(configManager) {
+            const resourceTests = document.getElementById('resource-tests');
+            const resources = [
+                './css/tailwind.min.css',
+                './css/bundle.min.css',
+                './css/fonts.css',
+                './css/font-awesome.min.css'
+            ];
+            
+            for (const resource of resources) {
+                const exists = await configManager.checkResourceExists(resource);
+                const status = exists ? 'success' : 'warning';
+                const statusText = exists ? '✓ Available' : '⚠ Not found';
+                
+                const div = document.createElement('div');
+                div.innerHTML = `<span class="${status}">${statusText}</span> ${resource}`;
+                resourceTests.appendChild(div);
+            }
+        }
+
+        function monitorPerformance() {
+            if ('performance' in window) {
+                window.addEventListener('load', () => {
+                    const loadTime = performance.now();
+                    document.getElementById('load-time').textContent = `${loadTime.toFixed(2)}ms`;
+                    
+                    // Check if resources are loaded
+                    setTimeout(() => {
+                        const resourcesLoaded = window.productionConfigManager ? 
+                            window.productionConfigManager.areResourcesLoaded() : false;
+                        document.getElementById('resources-loaded').textContent = resourcesLoaded ? 'Yes' : 'No';
+                    }, 100);
+                });
+            }
+        }
+    </script>
+</body>
+</html>

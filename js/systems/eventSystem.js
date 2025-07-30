@@ -211,6 +211,7 @@ export const EventTypes = {
   UI_ELEMENT_SELECTED: 'ui:element_selected',
   UI_PANEL_OPENED: 'ui:panel_opened',
   UI_PANEL_CLOSED: 'ui:panel_closed',
+  CAMERA_MOVED: 'ui:camera_moved',
   
   // Game events
   SCENARIO_STARTED: 'game:scenario_started',

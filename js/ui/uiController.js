@@ -36,6 +36,104 @@ export class UIController {
         this.isInitialized = true;
         eventSystem.emit('uiInitialized');
     }
+    
+    /**
+     * Handle layout changes from the layout manager
+     * @param {Object} layoutInfo - Layout change information
+     */
+    onLayoutChange(layoutInfo) {
+        try {
+            console.log('🎛️ UI Controller received layout change:', layoutInfo.viewportType);
+            
+            // Update UI mode based on viewport
+            this.updateUIForViewport(layoutInfo.viewportType);
+            
+            // Adjust panel states if needed
+            this.adjustPanelStatesForLayout(layoutInfo);
+            
+            // Notify subsystems
+            if (menuSystem && typeof menuSystem.onLayoutChange === 'function') {
+                menuSystem.onLayoutChange(layoutInfo);
+            }
+            
+            if (contextualPanels && typeof contextualPanels.onLayoutChange === 'function') {
+                contextualPanels.onLayoutChange(layoutInfo);
+            }
+            
+        } catch (error) {
+            console.error('❌ Error handling layout change in UI Controller:', error);
+        }
+    }
+    
+    /**
+     * Update UI for specific viewport type
+     * @param {string} viewportType - Current viewport type
+     */
+    updateUIForViewport(viewportType) {
+        // Remove existing viewport classes
+        document.body.classList.remove('ui-mobile', 'ui-tablet', 'ui-desktop');
+        
+        // Add current viewport class
+        document.body.classList.add(`ui-${viewportType}`);
+        
+        // Adjust UI behavior based on viewport
+        switch (viewportType) {
+            case 'mobile':
+                this.enableMobileUIMode();
+                break;
+            case 'tablet':
+                this.enableTabletUIMode();
+                break;
+            case 'desktop':
+                this.enableDesktopUIMode();
+                break;
+        }
+    }
+    
+    /**
+     * Enable mobile UI mode
+     */
+    enableMobileUIMode() {
+        // Simplify UI for mobile
+        this.currentMode = 'mobile';
+        
+        // Hide complex UI elements
+        const complexElements = document.querySelectorAll('.complex-ui');
+        complexElements.forEach(el => el.style.display = 'none');
+    }
+    
+    /**
+     * Enable tablet UI mode
+     */
+    enableTabletUIMode() {
+        this.currentMode = 'tablet';
+        
+        // Show most UI elements
+        const complexElements = document.querySelectorAll('.complex-ui');
+        complexElements.forEach(el => el.style.display = '');
+    }
+    
+    /**
+     * Enable desktop UI mode
+     */
+    enableDesktopUIMode() {
+        this.currentMode = 'desktop';
+        
+        // Show all UI elements
+        const complexElements = document.querySelectorAll('.complex-ui');
+        complexElements.forEach(el => el.style.display = '');
+    }
+    
+    /**
+     * Adjust panel states for layout changes
+     * @param {Object} layoutInfo - Layout information
+     */
+    adjustPanelStatesForLayout(layoutInfo) {
+        // Update internal panel state tracking
+        Object.keys(layoutInfo.panelStates).forEach(panelName => {
+            this.panelStates.set(panelName, layoutInfo.panelStates[panelName]);
+        });
+    }
 
     /**
      * Setup event listeners

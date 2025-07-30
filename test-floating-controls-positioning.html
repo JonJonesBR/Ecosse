@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test - Floating Controls Panel Positioning</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/adaptive-ui.css">
+    <link rel="stylesheet" href="css/element-controls-organization.css">
+    <link rel="stylesheet" href="css/layout-configuration.css">
+    <link rel="stylesheet" href="css/performance-optimization.css">
+    <link rel="stylesheet" href="css/dom-fixes.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Test-specific styles */
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-section {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(30, 41, 59, 0.5);
+            border-radius: 8px;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            padding: 0.5rem 1rem;
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 6px;
+            color: #e2e8f0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .test-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        .viewport-info {
+            background: rgba(15, 23, 42, 0.8);
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+        
+        .mock-canvas {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #1e293b, #334155);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+            font-size: 1.2rem;
+            position: relative;
+            z-index: 10;
+        }
+        
+        /* Responsive test indicators */
+        .responsive-indicator {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            z-index: 2000;
+        }
+        
+        @media (max-width: 768px) {
+            .responsive-indicator::after {
+                content: " - MOBILE";
+            }
+        }
+        
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .responsive-indicator::after {
+                content: " - TABLET";
+            }
+        }
+        
+        @media (min-width: 1025px) {
+            .responsive-indicator::after {
+                content: " - DESKTOP";
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="responsive-indicator">Viewport</div>
+    
+    <div class="test-container">
+        <h1>Floating Controls Panel Positioning Test</h1>
+        
+        <div class="test-section">
+            <h2>Test Controls</h2>
+            <div class="test-controls">
+                <button class="test-btn" onclick="testPosition('bottom-center')">Bottom Center</button>
+                <button class="test-btn" onclick="testPosition('bottom-left')">Bottom Left</button>
+                <button class="test-btn" onclick="testPosition('bottom-right')">Bottom Right</button>
+                <button class="test-btn" onclick="testPosition('side-left')">Side Left</button>
+                <button class="test-btn" onclick="testPosition('side-right')">Side Right</button>
+                <button class="test-btn" onclick="toggleCollapse()">Toggle Collapse</button>
+                <button class="test-btn" onclick="toggleCompact()">Toggle Compact</button>
+                <button class="test-btn" onclick="testViewportAwareness()">Test Viewport Awareness</button>
+            </div>
+            
+            <div class="viewport-info" id="viewport-info">
+                Viewport: <span id="viewport-size">Loading...</span><br>
+                Panel Position: <span id="panel-position">bottom-center</span><br>
+                Panel State: <span id="panel-state">normal</span>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Mock 3D Canvas Area</h2>
+            <div class="mock-canvas">
+                <div>Mock 3D Canvas - Z-Index Test Area</div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Instructions</h2>
+            <ul>
+                <li><strong>Z-Index Test:</strong> The floating panel should appear above this content and the mock canvas</li>
+                <li><strong>Positioning Test:</strong> Try different positions using the buttons above</li>
+                <li><strong>Responsive Test:</strong> Resize your browser window to test different breakpoints</li>
+                <li><strong>Drag Test:</strong> Try dragging the panel using the drag handle (desktop only)</li>
+                <li><strong>Viewport Awareness:</strong> Panel should stay within viewport bounds at all times</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Mock Bottom Panel -->
+    <div id="bottom-panel">
+        <h3>Elementos e Controles</h3>
+        <div class="element-categories">
+            <div class="element-category">
+                <h4>🌍 Test Elements</h4>
+                <div class="element-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); gap: 0.5rem;">
+                    <div class="element-item" style="background: rgba(59, 130, 246, 0.2); padding: 0.5rem; border-radius: 4px; text-align: center; cursor: pointer;">💧 Water</div>
+                    <div class="element-item" style="background: rgba(59, 130, 246, 0.2); padding: 0.5rem; border-radius: 4px; text-align: center; cursor: pointer;">🪨 Rock</div>
+                    <div class="element-item" style="background: rgba(59, 130, 246, 0.2); padding: 0.5rem; border-radius: 4px; text-align: center; cursor: pointer;">🌿 Plant</div>
+                    <div class="element-item" style="background: rgba(59, 130, 246, 0.2); padding: 0.5rem; border-radius: 4px; text-align: center; cursor: pointer;">🐛 Creature</div>
+                </div>
+            </div>
+        </div>
+        <div id="simulation-controls" style="display: flex; gap: 0.5rem; justify-content: center; margin-top: 1rem; flex-wrap: wrap;">
+            <button style="padding: 0.5rem 1rem; background: rgba(34, 197, 94, 0.2); border: 1px solid rgba(34, 197, 94, 0.3); border-radius: 4px; color: #e2e8f0; cursor: pointer;">▶️ Play</button>
+            <button style="padding: 0.5rem 1rem; background: rgba(234, 179, 8, 0.2); border: 1px solid rgba(234, 179, 8, 0.3); border-radius: 4px; color: #e2e8f0; cursor: pointer;">⏩ Fast Forward</button>
+            <button style="padding: 0.5rem 1rem; background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 4px; color: #e2e8f0; cursor: pointer;">🔄 Reset</button>
+        </div>
+    </div>
+
+    <script src="js/floating-controls-panel.js"></script>
+    <script>
+        // Test functions
+        function testPosition(position) {
+            if (window.floatingControlsPanel) {
+                window.floatingControlsPanel.setPosition(position);
+                document.getElementById('panel-position').textContent = position;
+            }
+        }
+        
+        function toggleCollapse() {
+            if (window.floatingControlsPanel) {
+                window.floatingControlsPanel.toggleCollapse();
+                const state = window.floatingControlsPanel.isCollapsed ? 'collapsed' : 'normal';
+                document.getElementById('panel-state').textContent = state;
+            }
+        }
+        
+        function toggleCompact() {
+            if (window.floatingControlsPanel) {
+                window.floatingControlsPanel.toggleCompactMode();
+                const state = window.floatingControlsPanel.isCompactMode ? 'compact' : 'normal';
+                document.getElementById('panel-state').textContent = state;
+            }
+        }
+        
+        function testViewportAwareness() {
+            if (window.floatingControlsPanel) {
+                window.floatingControlsPanel.updateViewportAwareness();
+                console.log('Viewport awareness test triggered');
+            }
+        }
+        
+        function updateViewportInfo() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            document.getElementById('viewport-size').textContent = `${width}x${height}`;
+        }
+        
+        // Update viewport info on load and resize
+        window.addEventListener('load', updateViewportInfo);
+        window.addEventListener('resize', updateViewportInfo);
+        
+        // Listen for panel events
+        document.addEventListener('DOMContentLoaded', () => {
+            const panel = document.getElementById('bottom-panel');
+            if (panel) {
+                panel.addEventListener('positionChange', (e) => {
+                    document.getElementById('panel-position').textContent = e.detail.position;
+                });
+                
+                panel.addEventListener('panelToggle', (e) => {
+                    const state = e.detail.collapsed ? 'collapsed' : 'normal';
+                    document.getElementById('panel-state').textContent = state;
+                });
+            }
+        });
+        
+        // Test z-index by adding click handlers to elements
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('element-item')) {
+                e.target.style.background = 'rgba(34, 197, 94, 0.3)';
+                setTimeout(() => {
+                    e.target.style.background = 'rgba(59, 130, 246, 0.2)';
+                }, 200);
+            }
+        });
+    </script>
+</body>
+</html>

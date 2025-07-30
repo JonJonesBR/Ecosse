@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Element Controls Organization</title>
+    <link rel="stylesheet" href="css/element-controls-organization.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: #1a202c;
+            color: #e2e8f0;
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        #bottom-panel {
+            background: rgba(30, 41, 59, 0.9);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin: 20px auto;
+            max-width: 800px;
+        }
+        
+        .element-categories {
+            margin-bottom: 1rem;
+        }
+        
+        .element-category {
+            margin-bottom: 1rem;
+        }
+        
+        .element-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 0.75rem;
+        }
+        
+        .element-item {
+            background: rgba(51, 65, 85, 0.8);
+            border: 1px solid rgba(107, 114, 128, 0.3);
+            border-radius: 0.5rem;
+            padding: 0.75rem 0.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 0.875rem;
+            color: #e2e8f0;
+        }
+        
+        .element-item:hover {
+            background: rgba(59, 130, 246, 0.3);
+            border-color: rgba(59, 130, 246, 0.5);
+        }
+        
+        h4 {
+            color: #e2e8f0;
+            margin-bottom: 0.5rem;
+        }
+        
+        .test-controls {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .test-btn {
+            background: rgba(59, 130, 246, 0.8);
+            border: 1px solid rgba(59, 130, 246, 0.5);
+            border-radius: 0.375rem;
+            color: #e2e8f0;
+            cursor: pointer;
+            padding: 0.5rem 1rem;
+            margin: 0.25rem;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+        
+        .test-btn:hover {
+            background: rgba(59, 130, 246, 1);
+        }
+        
+        #test-results {
+            background: rgba(15, 23, 42, 0.9);
+            border-radius: 0.5rem;
+            padding: 1rem;
+            margin-top: 20px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h2>Element Controls Organization Test</h2>
+        <button class="test-btn" onclick="runBasicTests()">Run Basic Tests</button>
+        <button class="test-btn" onclick="testCompactMode()">Test Compact Mode</button>
+        <button class="test-btn" onclick="testCategoryToggle()">Test Category Toggle</button>
+        <button class="test-btn" onclick="runVerification()">Run Full Verification</button>
+        <button class="test-btn" onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div id="bottom-panel">
+        <h3>Elementos e Controles</h3>
+        <div class="element-categories">
+            <!-- Basic Elements -->
+            <div class="element-category">
+                <h4>🌍 Elementos Básicos</h4>
+                <div class="element-grid">
+                    <div class="element-item" data-element="water">💧 Água</div>
+                    <div class="element-item" data-element="rock">🪨 Rocha</div>
+                    <div class="element-item" data-element="sun">☀️ Sol</div>
+                    <div class="element-item" data-element="rain">🌧️ Chuva</div>
+                </div>
+            </div>
+
+            <!-- Plant Life -->
+            <div class="element-category">
+                <h4>🌱 Vida Vegetal</h4>
+                <div class="element-grid">
+                    <div class="element-item" data-element="plant">🌿 Planta</div>
+                    <div class="element-item" data-element="carnivorous_plant">🪴 P. Carnívora</div>
+                    <div class="element-item" data-element="crystal_tree">🌲 Á. Cristal</div>
+                    <div class="element-item" data-element="fungus">🍄 Fungo</div>
+                </div>
+            </div>
+
+            <!-- Animal Life -->
+            <div class="element-category">
+                <h4>🐾 Vida Animal</h4>
+                <div class="element-grid">
+                    <div class="element-item" data-element="creature">🐛 Criatura</div>
+                    <div class="element-item" data-element="aquatic_creature">🐟 C. Aquática</div>
+                    <div class="element-item" data-element="flying_creature">🦋 C. Voadora</div>
+                    <div class="element-item" data-element="predator">🐺 Predador</div>
+                </div>
+            </div>
+
+            <!-- Civilization & Technology -->
+            <div class="element-category">
+                <h4>🏛️ Civilização & Tecnologia</h4>
+                <div class="element-grid">
+                    <div class="element-item" data-element="tribe">🛖 Tribo</div>
+                    <div class="element-item" data-element="extractionProbe">⛏️ Sonda</div>
+                </div>
+            </div>
+
+            <!-- Special Elements -->
+            <div class="element-category">
+                <h4>✨ Elementos Especiais</h4>
+                <div class="element-grid">
+                    <div class="element-item" data-element="energy_crystal">💎 C. Energia</div>
+                    <div class="element-item" data-element="time_anomaly">⏰ A. Temporal</div>
+                    <div class="element-item" data-element="portal_stone">🌀 Portal</div>
+                    <div class="element-item" data-element="life_spring">⛲ F. Vida</div>
+                </div>
+            </div>
+
+            <!-- Events & Tools -->
+            <div class="element-category">
+                <h4>🌪️ Eventos & Ferramentas</h4>
+                <div class="element-grid">
+                    <div class="element-item" data-element="meteor">☄️ Meteoro</div>
+                    <div class="element-item" data-element="volcano">🌋 Vulcão</div>
+                    <div class="element-item" data-element="eraser">🚫 Borracha</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="test-results">
+        <div>Test results will appear here...</div>
+    </div>
+
+    <script src="js/ui/elementControlsOrganizer.js"></script>
+    <script src="verify-task5-completion.js"></script>
+    <script>
+        let testResults = [];
+        
+        function logResult(test, passed, details) {
+            const status = passed ? '✅' : '❌';
+            const result = `${status} ${test}: ${details}`;
+            testResults.push(result);
+            console.log(result);
+            updateResultsDisplay();
+        }
+        
+        function updateResultsDisplay() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = testResults.join('<br>');
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+        
+        function clearResults() {
+            testResults = [];
+            updateResultsDisplay();
+        }
+        
+        function runBasicTests() {
+            clearResults();
+            logResult('Initialization', 'Starting basic tests...', '');
+            
+            // Test organizer exists
+            const organizer = window.elementControlsOrganizer;
+            logResult('Organizer Instance', !!organizer, organizer ? 'Found' : 'Not found');
+            
+            if (!organizer) return;
+            
+            // Test categories structure
+            const categories = document.querySelectorAll('.element-category');
+            logResult('Category Elements', categories.length === 6, `Found ${categories.length} categories`);
+            
+            // Test category headers
+            const headers = document.querySelectorAll('.category-header');
+            logResult('Enhanced Headers', headers.length > 0, `Found ${headers.length} enhanced headers`);
+            
+            // Test toggle buttons
+            const toggleButtons = document.querySelectorAll('.category-toggle-btn');
+            logResult('Toggle Buttons', toggleButtons.length > 0, `Found ${toggleButtons.length} toggle buttons`);
+            
+            // Test management controls
+            const managementControls = document.querySelector('.category-management-controls');
+            logResult('Management Controls', !!managementControls, managementControls ? 'Found' : 'Not found');
+            
+            // Test organizer state
+            const state = organizer.getState();
+            logResult('Organizer State', !!state, `Categories: ${state.categories ? Object.keys(state.categories).length : 0}`);
+        }
+        
+        function testCompactMode() {
+            const organizer = window.elementControlsOrganizer;
+            if (!organizer) {
+                logResult('Compact Mode Test', false, 'Organizer not found');
+                return;
+            }
+            
+            const initialMode = organizer.isCompactMode;
+            logResult('Initial Compact Mode', true, `Current: ${initialMode}`);
+            
+            // Toggle compact mode
+            organizer.setCompactMode(!initialMode);
+            const newMode = organizer.isCompactMode;
+            logResult('Compact Mode Toggle', newMode !== initialMode, `Changed to: ${newMode}`);
+            
+            // Check DOM changes
+            const bottomPanel = document.getElementById('bottom-panel');
+            const hasCompactClass = bottomPanel.classList.contains('compact-mode');
+            logResult('DOM Compact Class', hasCompactClass === newMode, `DOM matches state: ${hasCompactClass}`);
+            
+            // Check element classes
+            const compactElements = document.querySelectorAll('.element-item.compact');
+            logResult('Compact Elements', compactElements.length > 0 === newMode, `Found ${compactElements.length} compact elements`);
+            
+            // Restore original state
+            organizer.setCompactMode(initialMode);
+        }
+        
+        function testCategoryToggle() {
+            const organizer = window.elementControlsOrganizer;
+            if (!organizer) {
+                logResult('Category Toggle Test', false, 'Organizer not found');
+                return;
+            }
+            
+            // Test toggling plants category
+            const testCategory = 'plants';
+            const initialState = organizer.categories.get(testCategory)?.expanded;
+            logResult('Initial Category State', true, `${testCategory}: ${initialState}`);
+            
+            // Toggle category
+            organizer.setCategoryExpanded(testCategory, !initialState);
+            const newState = organizer.categories.get(testCategory)?.expanded;
+            logResult('Category State Toggle', newState !== initialState, `${testCategory}: ${initialState} → ${newState}`);
+            
+            // Check DOM visibility
+            const categoryElement = document.querySelector(`[data-category-id="${testCategory}"]`);
+            const contentElement = categoryElement?.querySelector('.category-content');
+            const isVisible = contentElement?.style.display !== 'none';
+            logResult('DOM Visibility', isVisible === newState, `DOM visible: ${isVisible}, State: ${newState}`);
+            
+            // Check toggle button
+            const toggleButton = categoryElement?.querySelector('.category-toggle-btn');
+            const buttonExpanded = toggleButton?.getAttribute('aria-expanded') === 'true';
+            logResult('Toggle Button State', buttonExpanded === newState, `Button: ${buttonExpanded}, State: ${newState}`);
+            
+            // Restore original state
+            organizer.setCategoryExpanded(testCategory, initialState);
+        }
+        
+        function runVerification() {
+            clearResults();
+            if (window.verifyTask5Completion) {
+                const result = window.verifyTask5Completion();
+                logResult('Full Verification', result.passed, `Success rate: ${result.successRate}%`);
+                
+                result.results.forEach(test => {
+                    logResult(test.test, test.passed, test.details);
+                });
+            } else {
+                logResult('Verification', false, 'Verification function not found');
+            }
+        }
+        
+        // Wait for organizer to initialize
+        setTimeout(() => {
+            if (window.elementControlsOrganizer) {
+                logResult('Auto-initialization', true, 'Organizer ready for testing');
+            } else {
+                logResult('Auto-initialization', false, 'Organizer not initialized');
+            }
+        }, 1000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Canvas Container Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-result {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .test-passed {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .test-failed {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .test-summary {
+            font-weight: bold;
+            font-size: 1.2em;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #canvas-container {
+            width: 400px;
+            height: 300px;
+            border: 2px solid #ccc;
+            margin: 10px 0;
+            position: relative;
+        }
+        canvas {
+            background-color: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 Canvas Container Integration Test</h1>
+    
+    <div class="test-container">
+        <h2>Test Environment</h2>
+        <div id="canvas-container"></div>
+        <button onclick="runTests()">Run Tests</button>
+        <button onclick="runScenarios()">Run Scenarios</button>
+        <button onclick="clearResults()">Clear Results</button>
+    </div>
+
+    <div class="test-container">
+        <h2>Test Results</h2>
+        <div id="test-results"></div>
+    </div>
+
+    <script type="module">
+        import { responsiveCanvasContainer } from './js/responsive-canvas-container.js';
+        import { layoutConfigurationSystem } from './js/ui/layoutConfigurationSystem.js';
+
+        // Make available globally for testing
+        window.responsiveCanvasContainer = responsiveCanvasContainer;
+        window.layoutConfigurationSystem = layoutConfigurationSystem;
+
+        // Create a mock Three.js setup for testing
+        function createMockThreeJsSetup() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 400;
+            canvas.height = 300;
+            
+            const mockRenderer = {
+                domElement: canvas,
+                setSize: (width, height) => {
+                    canvas.width = width;
+                    canvas.height = height;
+                    console.log(`Mock renderer size set to ${width}x${height}`);
+                },
+                setPixelRatio: (ratio) => {
+                    console.log(`Mock renderer pixel ratio set to ${ratio}`);
+                },
+                getPixelRatio: () => window.devicePixelRatio || 1
+            };
+
+            const mockCamera = {
+                isPerspectiveCamera: true,
+                aspect: 4/3,
+                updateProjectionMatrix: () => {
+                    console.log('Mock camera projection matrix updated');
+                }
+            };
+
+            return { canvas, mockRenderer, mockCamera };
+        }
+
+        // Initialize mock setup
+        const { canvas, mockRenderer, mockCamera } = createMockThreeJsSetup();
+        const container = document.getElementById('canvas-container');
+        container.appendChild(canvas);
+
+        // Initialize responsive canvas container
+        responsiveCanvasContainer.initialize(container, mockRenderer, mockCamera);
+
+        // Test functions
+        window.runTests = function() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<h3>Running Tests...</h3>';
+            
+            const tests = [
+                {
+                    name: 'setAutoResize method exists',
+                    test: () => typeof responsiveCanvasContainer.setAutoResize === 'function'
+                },
+                {
+                    name: 'setMaintainAspectRatio method exists',
+                    test: () => typeof responsiveCanvasContainer.setMaintainAspectRatio === 'function'
+                },
+                {
+                    name: 'setAutoResize functionality works',
+                    test: () => {
+                        responsiveCanvasContainer.setAutoResize(true);
+                        const enabled = responsiveCanvasContainer.isAutoResizeEnabled();
+                        responsiveCanvasContainer.setAutoResize(false);
+                        const disabled = !responsiveCanvasContainer.isAutoResizeEnabled();
+                        responsiveCanvasContainer.setAutoResize(true); // restore
+                        return enabled && disabled;
+                    }
+                },
+                {
+                    name: 'setMaintainAspectRatio functionality works',
+                    test: () => {
+                        responsiveCanvasContainer.setMaintainAspectRatio(true);
+                        const enabled = responsiveCanvasContainer.isMaintainAspectRatioEnabled();
+                        responsiveCanvasContainer.setMaintainAspectRatio(false);
+                        const disabled = !responsiveCanvasContainer.isMaintainAspectRatioEnabled();
+                        responsiveCanvasContainer.setMaintainAspectRatio(true); // restore
+                        return enabled && disabled;
+                    }
+                },
+                {
+                    name: 'Layout system validates canvas methods',
+                    test: () => {
+                        const validMethod = layoutConfigurationSystem.validateCanvasMethod('setAutoResize');
+                        const invalidMethod = !layoutConfigurationSystem.validateCanvasMethod('nonExistentMethod');
+                        return validMethod && invalidMethod;
+                    }
+                },
+                {
+                    name: 'Canvas configuration applies without errors',
+                    test: () => {
+                        try {
+                            layoutConfigurationSystem.applyCanvasConfiguration();
+                            return true;
+                        } catch (error) {
+                            console.error('Canvas configuration error:', error);
+                            return false;
+                        }
+                    }
+                },
+                {
+                    name: 'All required methods exist',
+                    test: () => {
+                        const requiredMethods = [
+                            'setAutoResize', 'setMaintainAspectRatio', 'isAutoResizeEnabled',
+                            'isMaintainAspectRatioEnabled', 'forceResize', 'updateCanvasSize'
+                        ];
+                        return requiredMethods.every(method => 
+                            typeof responsiveCanvasContainer[method] === 'function'
+                        );
+                    }
+                }
+            ];
+
+            let passed = 0;
+            let total = tests.length;
+            let resultsHTML = '';
+
+            tests.forEach(test => {
+                try {
+                    const result = test.test();
+                    if (result) {
+                        passed++;
+                        resultsHTML += `<div class="test-result test-passed">✅ ${test.name}</div>`;
+                    } else {
+                        resultsHTML += `<div class="test-result test-failed">❌ ${test.name}</div>`;
+                    }
+                } catch (error) {
+                    resultsHTML += `<div class="test-result test-failed">💥 ${test.name} - Error: ${error.message}</div>`;
+                }
+            });
+
+            resultsHTML += `<div class="test-summary">Results: ${passed}/${total} tests passed (${((passed/total)*100).toFixed(1)}%)</div>`;
+            resultsDiv.innerHTML = resultsHTML;
+        };
+
+        window.runScenarios = function() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML += '<h3>Running Integration Scenarios...</h3>';
+            
+            const scenarios = [
+                {
+                    name: 'Layout preset changes',
+                    test: () => {
+                        try {
+                            if (!layoutConfigurationSystem.isInitialized) {
+                                layoutConfigurationSystem.initialize();
+                            }
+                            
+                            const presets = ['default', 'compact', 'full', 'presentation'];
+                            for (const preset of presets) {
+                                layoutConfigurationSystem.applyPreset(preset);
+                            }
+                            return true;
+                        } catch (error) {
+                            console.error('Preset scenario error:', error);
+                            return false;
+                        }
+                    }
+                },
+                {
+                    name: 'Canvas resize integration',
+                    test: () => {
+                        try {
+                            const originalSize = responsiveCanvasContainer.getCurrentSize();
+                            responsiveCanvasContainer.forceResize();
+                            return true;
+                        } catch (error) {
+                            console.error('Resize integration error:', error);
+                            return false;
+                        }
+                    }
+                },
+                {
+                    name: 'Error handling for missing methods',
+                    test: () => {
+                        try {
+                            // Temporarily break a method
+                            const originalMethod = responsiveCanvasContainer.setAutoResize;
+                            responsiveCanvasContainer.setAutoResize = null;
+                            
+                            // Should handle gracefully
+                            const result = !layoutConfigurationSystem.validateCanvasMethod('setAutoResize');
+                            
+                            // Restore method
+                            responsiveCanvasContainer.setAutoResize = originalMethod;
+                            
+                            return result;
+                        } catch (error) {
+                            console.error('Error handling scenario error:', error);
+                            return false;
+                        }
+                    }
+                }
+            ];
+
+            let scenariosPassed = 0;
+            let scenariosHTML = '';
+
+            scenarios.forEach(scenario => {
+                const result = scenario.test();
+                if (result) {
+                    scenariosPassed++;
+                    scenariosHTML += `<div class="test-result test-passed">✅ Scenario: ${scenario.name}</div>`;
+                } else {
+                    scenariosHTML += `<div class="test-result test-failed">❌ Scenario: ${scenario.name}</div>`;
+                }
+            });
+
+            scenariosHTML += `<div class="test-summary">Scenarios: ${scenariosPassed}/${scenarios.length} passed</div>`;
+            resultsDiv.innerHTML += scenariosHTML;
+        };
+
+        window.clearResults = function() {
+            document.getElementById('test-results').innerHTML = '';
+        };
+
+        // Auto-run tests on load
+        setTimeout(() => {
+            runTests();
+        }, 1000);
+    </script>
+</body>
+</html>

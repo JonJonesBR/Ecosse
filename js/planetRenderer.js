@@ -259,6 +259,74 @@ function createPlanet(config) {
         case 'none':
             atmosphereDensity = 0.0; // Invisible
             break;
+        // NEW ATMOSPHERE TYPES
+        case 'humid':
+            atmosphereColor = new THREE.Color(0x87CEEB); // Sky blue
+            atmosphereDensity = 0.5;
+            scatteringStrength *= 1.1;
+            break;
+        case 'crystalline':
+            atmosphereColor = new THREE.Color(0xE6E6FA); // Lavender
+            atmosphereDensity = 0.3;
+            scatteringStrength *= 1.4;
+            break;
+        case 'sulfurous':
+            atmosphereColor = new THREE.Color(0xFFFF00); // Yellow
+            atmosphereDensity = 0.7;
+            scatteringStrength *= 1.5;
+            break;
+        case 'light':
+            atmosphereColor = new THREE.Color(0xF0F8FF); // Alice blue
+            atmosphereDensity = 0.2;
+            scatteringStrength *= 0.8;
+            break;
+        case 'pressurized':
+            atmosphereColor = new THREE.Color(0x4169E1); // Royal blue
+            atmosphereDensity = 0.8;
+            scatteringStrength *= 1.6;
+            atmosphereThickness = planetRadius * 0.1;
+            break;
+        case 'toxic':
+            atmosphereColor = new THREE.Color(0x9ACD32); // Yellow green
+            atmosphereDensity = 0.6;
+            scatteringStrength *= 1.3;
+            break;
+        case 'perfect':
+            atmosphereColor = new THREE.Color(0x87CEFA); // Light sky blue
+            atmosphereDensity = 0.4;
+            scatteringStrength *= 1.0;
+            break;
+        case 'turbulent':
+            atmosphereColor = new THREE.Color(0x696969); // Dim gray
+            atmosphereDensity = 0.7;
+            scatteringStrength *= 1.8;
+            break;
+        case 'variable':
+            atmosphereColor = new THREE.Color(0xDDA0DD); // Plum
+            atmosphereDensity = 0.3 + Math.random() * 0.4; // Variable density
+            scatteringStrength *= 0.8 + Math.random() * 0.8;
+            break;
+        case 'escaping':
+            atmosphereColor = new THREE.Color(0x2F4F4F); // Dark slate gray
+            atmosphereDensity = 0.1;
+            scatteringStrength *= 0.5;
+            atmosphereThickness = planetRadius * 0.15; // Very thick but sparse
+            break;
+        case 'controlled':
+            atmosphereColor = new THREE.Color(0x00CED1); // Dark turquoise
+            atmosphereDensity = 0.45;
+            scatteringStrength *= 1.0;
+            break;
+        case 'cold_humid':
+            atmosphereColor = new THREE.Color(0xB0E0E6); // Powder blue
+            atmosphereDensity = 0.5;
+            scatteringStrength *= 0.9;
+            break;
+        case 'humid_sulfurous':
+            atmosphereColor = new THREE.Color(0xDAA520); // Goldenrod
+            atmosphereDensity = 0.6;
+            scatteringStrength *= 1.4;
+            break;
     }
 
     if (atmosphere) {
@@ -325,6 +393,26 @@ function generatePlanetTexture(config, detailLevel = 1.0) {
     const volcanicColor = '#A0522D'; // Sienna
     const gasColor1 = '#FFD700'; // Gold
     const gasColor2 = '#FFDEAD'; // NavajoWhite
+    
+    // NEW BIOME COLORS
+    const tundraColor = '#E6F3FF'; // Light blue-white
+    const marshColor = '#556B2F'; // Dark olive green
+    const crystallineColor = '#E0E6FF'; // Light crystal blue
+    const iceColor = '#F0F8FF'; // Alice blue
+    const aerialColor = '#87CEEB'; // Sky blue
+    const oceanicColor = '#000080'; // Navy blue
+    const toxicColor = '#9ACD32'; // Yellow green
+    const paradiseColor = '#98FB98'; // Pale green
+    const stormColor = '#4682B4'; // Steel blue
+    const binaryColor1 = '#FF6347'; // Tomato
+    const binaryColor2 = '#4169E1'; // Royal blue
+    const rogueColor = '#2F4F4F'; // Dark slate gray
+    const artificialColor = '#C0C0C0'; // Silver
+    const mixedColor1 = '#8FBC8F'; // Dark sea green
+    const mixedColor2 = '#F4A460'; // Sandy brown
+    const polarColor = '#B0E0E6'; // Powder blue
+    const tropicalVolcanicColor1 = '#228B22'; // Forest green
+    const tropicalVolcanicColor2 = '#8B4513'; // Saddle brown
 
     const scale = 0.02; // Adjust for continent size
     // Adjust octaves based on detail level to reduce computation for lower detail
@@ -385,6 +473,143 @@ function generatePlanetTexture(config, detailLevel = 1.0) {
                         color = gasColor1;
                     } else {
                         color = gasColor2;
+                    }
+                    break;
+                    
+                // NEW PLANET TYPES
+                case 'tundra':
+                    if (noiseValue < threshold - 0.1) { // Less water, more frozen land
+                        color = waterColor;
+                    } else {
+                        color = tundraColor;
+                    }
+                    break;
+                case 'marsh':
+                    if (noiseValue < threshold + 0.3) { // Lots of water
+                        color = waterColor;
+                    } else {
+                        color = marshColor;
+                    }
+                    break;
+                case 'crystalline':
+                    // Create crystal formations
+                    const crystalNoise = simplex.noise2D(scaledX * 0.1, scaledY * 0.1);
+                    if (crystalNoise > 0.3) {
+                        color = '#FFFFFF'; // Pure white crystals
+                    } else {
+                        color = crystallineColor;
+                    }
+                    break;
+                case 'ice':
+                    // Mostly ice with some darker areas
+                    if (noiseValue > 0.7) {
+                        color = '#B0C4DE'; // Light steel blue for cracks
+                    } else {
+                        color = iceColor;
+                    }
+                    break;
+                case 'aerial':
+                    // Floating islands pattern
+                    const islandNoise = simplex.noise2D(scaledX * 0.03, scaledY * 0.03);
+                    if (islandNoise > 0.2) {
+                        color = landColor; // Islands
+                    } else {
+                        color = aerialColor; // Sky
+                    }
+                    break;
+                case 'oceanic':
+                    // Deep ocean with trenches
+                    const depthNoise = simplex.noise2D(scaledX * 0.02, scaledY * 0.02);
+                    if (depthNoise > 0.4) {
+                        color = oceanicColor; // Deep trenches
+                    } else {
+                        color = waterColor; // Regular ocean
+                    }
+                    break;
+                case 'toxic':
+                    // Toxic wasteland with contaminated areas
+                    const toxicNoise = simplex.noise2D(scaledX * 0.08, scaledY * 0.08);
+                    if (toxicNoise > 0.3) {
+                        color = '#ADFF2F'; // Green yellow for toxic pools
+                    } else {
+                        color = toxicColor;
+                    }
+                    break;
+                case 'paradise':
+                    // Perfect world with varied landscapes
+                    if (noiseValue < threshold) {
+                        color = waterColor;
+                    } else if (noiseValue < threshold + 0.3) {
+                        color = paradiseColor;
+                    } else {
+                        color = landColor;
+                    }
+                    break;
+                case 'storm':
+                    // Storm world with turbulent patterns
+                    const stormNoise = simplex.noise2D(scaledX * 0.15, scaledY * 0.15);
+                    if (stormNoise > 0.2) {
+                        color = '#708090'; // Slate gray for storm clouds
+                    } else {
+                        color = stormColor;
+                    }
+                    break;
+                case 'binary':
+                    // Binary system with dual-colored regions
+                    const binaryNoise = simplex.noise2D(scaledX * 0.04, scaledY * 0.04);
+                    if (binaryNoise > 0) {
+                        color = binaryColor1; // Red side
+                    } else {
+                        color = binaryColor2; // Blue side
+                    }
+                    break;
+                case 'rogue':
+                    // Dark, cold rogue planet
+                    const rogueNoise = simplex.noise2D(scaledX * 0.06, scaledY * 0.06);
+                    if (rogueNoise > 0.5) {
+                        color = '#000000'; // Pure black
+                    } else {
+                        color = rogueColor;
+                    }
+                    break;
+                case 'artificial':
+                    // Artificial world with geometric patterns
+                    const artificialNoise = Math.sin(scaledX * 0.02) * Math.cos(scaledY * 0.02);
+                    if (artificialNoise > 0.3) {
+                        color = '#FFD700'; // Gold for artificial structures
+                    } else {
+                        color = artificialColor;
+                    }
+                    break;
+                case 'mixed':
+                    // Mixed biome with varied regions
+                    if (noiseValue < 0.3) {
+                        color = mixedColor1; // Forest areas
+                    } else if (noiseValue < 0.6) {
+                        color = mixedColor2; // Desert areas
+                    } else {
+                        color = waterColor; // Water areas
+                    }
+                    break;
+                case 'polar_ocean':
+                    // Polar ocean with ice sheets
+                    if (noiseValue < 0.4) {
+                        color = oceanicColor; // Deep water
+                    } else if (noiseValue < 0.7) {
+                        color = waterColor; // Regular water
+                    } else {
+                        color = polarColor; // Ice sheets
+                    }
+                    break;
+                case 'tropical_volcanic':
+                    // Tropical volcanic with lush vegetation and lava
+                    const volcanicTropicalNoise = simplex.noise2D(scaledX * 0.07, scaledY * 0.07);
+                    if (volcanicTropicalNoise > 0.4) {
+                        color = volcanicColor; // Lava areas
+                    } else if (noiseValue < threshold) {
+                        color = waterColor; // Water
+                    } else {
+                        color = tropicalVolcanicColor1; // Lush vegetation
                     }
                     break;
                 default:
@@ -1008,7 +1233,13 @@ export function get3DIntersectionPoint(event, canvas) {
 }
 
 // Funções de get/set/convert que podem ser necessárias
-export function getCameraState() { return { position: camera.position.toArray(), target: controls.target.toArray() }; }
+export function getCameraState() { 
+    // Add null checks to prevent errors when camera/controls aren't initialized yet
+    if (!camera || !controls || !camera.position || !controls.target) {
+        return null;
+    }
+    return { position: camera.position.toArray(), target: controls.target.toArray() }; 
+}
 export function setCameraState(state) { camera.position.fromArray(state.position); controls.target.fromArray(state.target); }
 export function convert3DTo2DCoordinates(point3D, config) { 
     if (!planetMesh || !config) return { x: 0, y: 0 };

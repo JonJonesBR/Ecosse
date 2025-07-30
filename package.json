@@ -1,0 +1,23 @@
+{
+  "name": "ecosse-planetary-sandbox",
+  "version": "1.0.0",
+  "description": "3D Planetary Ecosystem Sandbox",
+  "main": "index.html",
+  "scripts": {
+    "build": "node build-production.js",
+    "build:css": "node build-production.js",
+    "serve": "python -m http.server 8000",
+    "dev": "python -m http.server 8000"
+  },
+  "keywords": [
+    "3d",
+    "ecosystem",
+    "simulation",
+    "threejs",
+    "planetary"
+  ],
+  "author": "Ecosse Team",
+  "license": "MIT",
+  "devDependencies": {},
+  "dependencies": {}
+}

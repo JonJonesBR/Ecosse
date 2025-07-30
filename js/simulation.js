@@ -3,7 +3,8 @@ import { askGeminiForElementInsight, askGeminiForEcosystemAnalysis } from './gem
 import { askGeminiForNarrativeEvent } from './geminiApi.js'; // NEW IMPORT
 import { getActiveTechnologyEffects } from './techTree.js'; // NEW IMPORT
 import { updateElements3D, convert3DTo2DCoordinates, get3DIntersectionPoint } from './planetRenderer.js';
-import { trackElementCreated, trackSimulationCycle, checkStabilityAchievement, resetAchievementProgress } from './achievements.js'; // NEW IMPORT
+import { trackElementCreated, trackSimulationCycle, checkStabilityAchievement, resetAchievementProgress, trackInteraction, trackReproduction, trackWeatherEvent } from './achievements.js'; // NEW IMPORT
+import { getPlayerEnergy, spendEnergy, addEnergy, performIntervention, canAffordIntervention, regenerateEnergy, addResource, generateEventResources } from './energySystem.js'; // NEW IMPORT
 import { updateWeatherDisplay } from './main.js'; // NEW IMPORT
 import { playSFX } from './audioManager.js'; // NEW IMPORT
 import { getScenarioById } from './scenarios.js'; // NEW IMPORT
@@ -12,6 +13,8 @@ import { info, warning, error } from './systems/loggingSystem.js'; // NEW: Enhan
 import { initFoodWebSystem, updatePopulationCounts } from './systems/foodWebSystem.js'; // NEW: Food web system
 import { weatherSystem } from './systems/weatherSystem.js'; // NEW: Enhanced weather system
 import { socialBehaviorSystem } from './systems/socialBehaviorSystem.js'; // NEW: Social behavior system
+import { specialEventsSystem } from './systems/specialEventsSystem.js'; // NEW: Special events system
+import { seasonalEventsSystem } from './systems/seasonalEventsSystem.js'; // NEW: Seasonal events system
 
 // Variáveis de estado do módulo
 let ecosystemElements = [];
@@ -25,14 +28,14 @@ let currentMouse3DPoint = null;
 let currentUseGemini = false; // New state variable
 let currentGeminiApiKey = ""; // New state variable
 let currentWeather = { type: 'sunny', emoji: '☀️', effect: 1.0 }; // NEW: Current weather state
-let playerEnergy = 100; // NEW: Player energy
+// Player energy is now managed by energySystem.js
 let annualCycleTime = 0; // NEW: Tracks progress through the year (0 to 1)
 let currentSeason = 'spring'; // NEW: Current season
 let simulationCycles = 0; // NEW: Track simulation cycles for scenarios
 let currentScenario = null; // NEW: Stores the active scenario
 
 // Referências da UI
-let ecosystemStabilitySpan, ecosystemBiodiversitySpan, ecosystemResourcesSpan, geminiInsightsDiv, playerEnergyDisplaySpan, currentSeasonDisplaySpan;
+let ecosystemStabilitySpan, ecosystemBiodiversitySpan, ecosystemResourcesSpan, geminiInsightsDiv, playerEnergyDisplaySpan, currentSeasonDisplaySpan, activeEventsListDiv;
 let showModalFn, hideModalFn; // NEW: Store modal functions
 
 export function initSimulationUIReferences(stability, biodiversity, resources, insights, playerEnergyDisplay, seasonDisplay, showModalCallback, hideModalCallback) {
@@ -42,16 +45,57 @@ export function initSimulationUIReferences(stability, biodiversity, resources, i
     geminiInsightsDiv = insights;
     playerEnergyDisplaySpan = playerEnergyDisplay;
     currentSeasonDisplaySpan = seasonDisplay;
+    activeEventsListDiv = document.getElementById('active-events-list');
     showModalFn = showModalCallback; // Store the callback
     hideModalFn = hideModalCallback; // Store the callback
     updatePlayerEnergyDisplay();
     updateSeasonDisplay();
+    updateActiveEventsDisplay();
 }
 
 function updateSeasonDisplay() {
     if (currentSeasonDisplaySpan) {
         currentSeasonDisplaySpan.textContent = currentSeason.charAt(0).toUpperCase() + currentSeason.slice(1);
     }
+}
+
+function updateActiveEventsDisplay() {
+    if (!activeEventsListDiv) return;
+    
+    const activeEvents = specialEventsSystem.getActiveEvents();
+    const activeSeasonalEvents = seasonalEventsSystem.getActiveSeasonalEvents();
+    const allEvents = [...activeEvents, ...activeSeasonalEvents];
+    
+    if (allEvents.length === 0) {
+        activeEventsListDiv.innerHTML = '<p class="italic">Nenhum evento ativo</p>';
+        return;
+    }
+    
+    let eventsHtml = '';
+    allEvents.forEach(event => {
+        const remainingTime = Math.ceil(event.remainingDuration / 10); // Convert to seconds (assuming 100ms per cycle)
+        const progressPercent = ((event.duration - event.remainingDuration) / event.duration) * 100;
+        
+        // Different border colors for different event types
+        const borderColor = event.season ? 'border-green-500' : 'border-yellow-500';
+        const eventType = event.season ? `(${event.season})` : '(especial)';
+        
+        eventsHtml += `
+            <div class="active-event-item mb-2 p-2 bg-gray-800 rounded border-l-4 ${borderColor}">
+                <div class="flex justify-between items-center">
+                    <span class="font-semibold">${event.emoji} ${event.name}</span>
+                    <span class="text-xs text-gray-400">${remainingTime}s</span>
+                </div>
+                <p class="text-xs text-gray-300 mt-1">${event.description}</p>
+                <p class="text-xs text-gray-500 mt-1">${eventType}</p>
+                <div class="w-full bg-gray-700 rounded-full h-1 mt-2">
+                    <div class="${event.season ? 'bg-green-500' : 'bg-yellow-500'} h-1 rounded-full transition-all duration-300" style="width: ${progressPercent}%"></div>
+                </div>
+            </div>
+        `;
+    });
+    
+    activeEventsListDiv.innerHTML = eventsHtml;
 }
 
 // Funções de Get/Set para o estado
@@ -131,6 +175,7 @@ function updateSimulation(useGemini, geminiApiKey) {
         // Publish events for each new element
         simulationState.newElements.forEach(element => {
             publish(EventTypes.ELEMENT_CREATED, {
+                element: element, // Include full element for spatial audio
                 id: element.id,
                 type: element.type,
                 x: element.x,
@@ -152,6 +197,7 @@ function updateSimulation(useGemini, geminiApiKey) {
     // Publish events for each removed element
     elementsToRemove.forEach(element => {
         publish(EventTypes.ELEMENT_REMOVED, {
+            element: element, // Include full element for spatial audio
             id: element.id,
             type: element.type,
             x: element.x,
@@ -213,16 +259,41 @@ function updateSimulation(useGemini, geminiApiKey) {
     // Update social behavior system
     socialBehaviorSystem.update(ecosystemElements);
     
+    // Update special events system
+    specialEventsSystem.update(simulationState, simulationConfig, currentWeather);
+    
+    // Update seasonal events system
+    seasonalEventsSystem.update(currentSeason, simulationConfig.planetType, simulationState);
+    
+    // Update active events display
+    updateActiveEventsDisplay();
+    
     // Redesenha a cena e atualiza a UI se houver mudanças
     if(hasChanges) {
         drawEcosystem();
         updateSimulationInfo();
         checkStabilityAchievement(parseFloat(ecosystemStabilitySpan.textContent)); // NEW: Check stability achievement
     }
+    
+    // Regenerate energy every simulation cycle
+    regenerateEnergy();
+    
+    // Generate resources from rare events
+    if (weatherEffects && weatherEffects.weather && weatherEffects.weather.isExtreme) {
+        generateEventResources(weatherEffects.weather.type, weatherEffects.weather.intensity || 1);
+        trackWeatherEvent('extreme');
+    }
 
     // Interação opcional com a IA
     if (useGemini && geminiApiKey && Math.random() < 0.01) {
-        askGeminiForEcosystemAnalysis(simulationConfig, ecosystemElements, geminiApiKey, geminiInsightsDiv, logToObserver);
+        // 30% chance of using comprehensive analysis, 70% basic analysis
+        if (Math.random() < 0.3) {
+            import('./geminiApi.js').then(module => {
+                module.askGeminiForComprehensiveAnalysis(simulationConfig, ecosystemElements, geminiApiKey, geminiInsightsDiv, logToObserver);
+            });
+        } else {
+            askGeminiForEcosystemAnalysis(simulationConfig, ecosystemElements, geminiApiKey, geminiInsightsDiv, logToObserver);
+        }
     }
 
     // Trigger narrative event with low probability
@@ -345,6 +416,12 @@ export function addElementAtPoint(point3D, type, multiplier, useGemini, geminiAp
         return false;
     }
 
+    // Check energy cost for creating elements
+    const totalCost = multiplier * 10; // 10 energy per element
+    if (!canAffordIntervention('create_element') || !performIntervention('create_element', totalCost)) {
+        return false;
+    }
+
     const { x, y } = convert3DTo2DCoordinates(point3D, simulationConfig);
     const ElementClass = elementClasses[type];
     if (!ElementClass) {
@@ -366,7 +443,7 @@ export function addElementAtPoint(point3D, type, multiplier, useGemini, geminiAp
                 newElement = ElementClass(id, newX, newY);
             }
             ecosystemElements.push(newElement);
-            trackElementCreated(type); // NEW: Track element creation
+            trackElementCreated(type, { elements: ecosystemElements }); // NEW: Track element creation with ecosystem context
             playSFX('elementPlace'); // Play SFX for placing an element
         }
         drawEcosystem(); // Redesenha para mostrar o novo elemento
@@ -393,6 +470,11 @@ export function addElementAtPoint(point3D, type, multiplier, useGemini, geminiAp
 export function removeElementAtPoint(point3D) {
     const elementToRemove = getElementAtPoint3D(point3D);
     if (elementToRemove) {
+        // Check energy cost for removing elements
+        if (!performIntervention('remove_element')) {
+            return false;
+        }
+        
         ecosystemElements = ecosystemElements.filter(el => el.id !== elementToRemove.id);
         logToObserver(`Elemento ${elementToRemove.type} removido.`);
         drawEcosystem(); // Redesenha para remover o elemento
@@ -528,6 +610,14 @@ export function handleCanvasInteraction(event, isClick, useGemini, geminiApiKey,
                         window.visualIndicators.showSelectionIndicator(screenX, screenY, 40, 40);
                     }
                     
+                    // Publish element interaction event for spatial audio
+                    publish(EventTypes.ELEMENT_INTERACTION, {
+                        element: elementAtPoint,
+                        interactionType: 'click',
+                        x: elementAtPoint.x,
+                        y: elementAtPoint.y
+                    });
+                    
                     if (elementAtPoint.type === 'tribe') {
                         if (showTribeInteractionCallback) {
                             showTribeInteractionCallback(elementAtPoint);
@@ -575,47 +665,46 @@ export function handleCanvasInteraction(event, isClick, useGemini, geminiApiKey,
 }
 
 function updatePlayerEnergyDisplay() {
-    if (playerEnergyDisplaySpan) {
-        playerEnergyDisplaySpan.textContent = playerEnergy;
-    }
+    // Energy display is now handled by energySystem.js
+    // This function is kept for compatibility but does nothing
 }
 
 export function blessTribe(tribe) {
     const cost = 10;
-    if (playerEnergy >= cost) {
-        playerEnergy -= cost;
-        updatePlayerEnergyDisplay();
+    if (performIntervention('divine_intervention', cost)) {
         tribe.reproductionChance *= 2; // Temporarily double reproduction chance
         tribe.resourceCollectionRate *= 2; // Temporarily double resource collection
         logToObserver(`Tribo ${tribe.id.toFixed(0)} abençoada! Taxa de reprodução e coleta dobradas.`);
         showMessage(`Tribo ${tribe.id.toFixed(0)} abençoada!`, 'success');
         playSFX('bless'); // Play SFX for blessing
+        
+        // Add special resource as reward for blessing
+        addResource('harmony_crystals', 1, 'bênção tribal');
+        
         // Revert effect after some time (e.g., 10 simulation cycles)
         setTimeout(() => {
             tribe.reproductionChance /= 2;
             tribe.resourceCollectionRate /= 2;
             logToObserver(`Efeito da bênção na tribo ${tribe.id.toFixed(0)} terminou.`);
         }, 10 * 100); // Assuming 100ms per cycle
-    } else {
-        showMessage(`Energia insuficiente para abençoar a tribo. Necessário: ${cost}, Atual: ${playerEnergy}`, 'error');
     }
 }
 
 export function curseTribe(tribe) {
     const cost = 15;
-    if (playerEnergy >= cost) {
-        playerEnergy -= cost;
-        updatePlayerEnergyDisplay();
+    if (performIntervention('divine_intervention', cost)) {
         tribe.health *= 0.5; // Reduce health by half
         logToObserver(`Tribo ${tribe.id.toFixed(0)} amaldiçoada! Saúde reduzida e desastre localizado.`);
         showMessage(`Tribo ${tribe.id.toFixed(0)} amaldiçoada!`, 'error');
         playSFX('curse'); // Play SFX for cursing
+        
+        // Add dark resource as consequence of cursing
+        addResource('storm_essence', 1, 'maldição tribal');
+        
         // Potentially add a localized disaster effect here (e.g., remove nearby plants)
         ecosystemElements = ecosystemElements.filter(el => 
             !(el.type === 'plant' && Math.hypot(tribe.x - el.x, tribe.y - el.y) < 100) // Remove plants within 100 units
         );
         drawEcosystem();
-    } else {
-        showMessage(`Energia insuficiente para amaldiçoar a tribo. Necessário: ${cost}, Atual: ${playerEnergy}`, 'error');
     }
 }

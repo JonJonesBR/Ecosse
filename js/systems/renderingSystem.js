@@ -72,6 +72,10 @@ class RenderingSystem {
         
         // Last frame timestamp for delta calculation
         this.lastFrameTime = 0;
+        
+        // Camera tracking for spatial audio
+        this.lastCameraPosition = null;
+        this.lastCameraTarget = null;
     }
     
     /**
@@ -354,6 +358,9 @@ class RenderingSystem {
         // Convert to seconds for some systems
         const deltaSeconds = deltaTime / 1000;
         
+        // Check for camera movement and emit events for spatial audio
+        this.checkCameraMovement();
+        
         // Update lighting system
         if (lightingSystem) {
             lightingSystem.update(deltaSeconds);
@@ -387,6 +394,48 @@ class RenderingSystem {
         } else {
             // Standard rendering
             this.renderer.render(this.scene, this.camera);
+        }
+    }
+    
+    /**
+     * Check for camera movement and emit events for spatial audio
+     */
+    checkCameraMovement() {
+        if (!this.camera || !this.controls) return;
+        
+        const currentPosition = this.camera.position.toArray();
+        const currentTarget = this.controls.target.toArray();
+        
+        // Check if camera has moved significantly
+        if (!this.lastCameraPosition || !this.lastCameraTarget) {
+            this.lastCameraPosition = currentPosition;
+            this.lastCameraTarget = currentTarget;
+            return;
+        }
+        
+        const positionThreshold = 1.0; // Minimum movement to trigger update
+        const targetThreshold = 1.0;
+        
+        const positionMoved = Math.abs(currentPosition[0] - this.lastCameraPosition[0]) > positionThreshold ||
+                             Math.abs(currentPosition[1] - this.lastCameraPosition[1]) > positionThreshold ||
+                             Math.abs(currentPosition[2] - this.lastCameraPosition[2]) > positionThreshold;
+                             
+        const targetMoved = Math.abs(currentTarget[0] - this.lastCameraTarget[0]) > targetThreshold ||
+                           Math.abs(currentTarget[1] - this.lastCameraTarget[1]) > targetThreshold ||
+                           Math.abs(currentTarget[2] - this.lastCameraTarget[2]) > targetThreshold;
+        
+        if (positionMoved || targetMoved) {
+            // Emit camera movement event for spatial audio system
+            eventSystem.publish(EventTypes.CAMERA_MOVED, {
+                position: currentPosition,
+                target: currentTarget,
+                previousPosition: this.lastCameraPosition,
+                previousTarget: this.lastCameraTarget
+            });
+            
+            // Update stored positions
+            this.lastCameraPosition = currentPosition;
+            this.lastCameraTarget = currentTarget;
         }
     }
     
@@ -464,10 +513,14 @@ class RenderingSystem {
         this.config.enableSSAO = qualityLevel === 'high';
         
         // Update shader quality
-        shaderManager.setQualityLevel(qualityLevel);
+        if (shaderManager && typeof shaderManager.setQualityLevel === 'function') {
+            shaderManager.setQualityLevel(qualityLevel);
+        }
         
         // Update particle system quality
-        particleSystem.setQualityLevel(qualityLevel);
+        if (particleSystem && typeof particleSystem.setQualityLevel === 'function') {
+            particleSystem.setQualityLevel(qualityLevel);
+        }
         
         // Emit event for quality change
         eventSystem.emit('rendering:quality_changed', { qualityLevel });

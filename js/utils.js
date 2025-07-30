@@ -117,6 +117,24 @@ export const elementDefinitions = {
     extractionProbe: { emoji: '⛏️', color: 'rgba(150, 150, 0, 0.9)', baseHealth: 80, size: 20, decayRate: 0.02, extractionRate: 1 },
     predator: { emoji: '🐺', color: 'rgba(139, 69, 19, 0.9)', baseHealth: 150, energy: 120, size: 25, decayRate: 0.4, reproductionChance: 0.001, speed: 3, preferredPrey: ['creature'] },
     tribe: { emoji: '🛖', color: 'rgba(150, 100, 50, 0.9)', baseHealth: 500, size: 40, decayRate: 0.01, population: 10, technologyLevel: 1 },
+    
+    // NEW PLANT TYPES - Unique behaviors and characteristics
+    carnivorous_plant: { emoji: '🪴', color: 'rgba(120, 200, 50, 0.9)', baseHealth: 120, energy: 60, size: 28, decayRate: 0.25, reproductionChance: 0.003, huntingRange: 40, digestTime: 50 },
+    crystal_tree: { emoji: '🌲', color: 'rgba(100, 255, 200, 0.9)', baseHealth: 200, energy: 80, size: 35, decayRate: 0.1, reproductionChance: 0.001, crystalGrowth: 0.1, energyStorage: 150 },
+    spore_moss: { emoji: '🌱', color: 'rgba(150, 255, 100, 0.8)', baseHealth: 60, energy: 30, size: 15, decayRate: 0.3, reproductionChance: 0.008, sporeRange: 80, spreadRate: 0.05 },
+    fire_flower: { emoji: '🌺', color: 'rgba(255, 100, 50, 0.9)', baseHealth: 90, energy: 70, size: 22, decayRate: 0.2, reproductionChance: 0.004, heatRadius: 30, fireResistance: 0.9 },
+    
+    // NEW CREATURE TYPES - Specific ecological niches
+    aquatic_creature: { emoji: '🐟', color: 'rgba(50, 150, 255, 0.9)', baseHealth: 80, energy: 90, size: 20, decayRate: 0.25, reproductionChance: 0.003, speed: 2.5, preferredBiome: 'aquatic', waterDependency: 0.9 },
+    flying_creature: { emoji: '🦋', color: 'rgba(255, 200, 100, 0.9)', baseHealth: 60, energy: 120, size: 16, decayRate: 0.4, reproductionChance: 0.004, speed: 4, flightHeight: 50, pollinationRate: 0.1 },
+    burrowing_creature: { emoji: '🐹', color: 'rgba(150, 100, 80, 0.9)', baseHealth: 110, energy: 80, size: 18, decayRate: 0.2, reproductionChance: 0.002, speed: 1.5, burrowDepth: 20, soilAeration: 0.05 },
+    symbiotic_creature: { emoji: '🐜', color: 'rgba(200, 50, 50, 0.9)', baseHealth: 70, energy: 60, size: 12, decayRate: 0.35, reproductionChance: 0.005, speed: 2, colonySize: 5, mutualism: true },
+    
+    // NEW SPECIAL ELEMENTS - Unique effects
+    energy_crystal: { emoji: '💎', color: 'rgba(255, 255, 255, 0.9)', baseHealth: 300, size: 25, decayRate: 0.005, energyOutput: 2, resonanceRange: 60, amplification: 1.5 },
+    time_anomaly: { emoji: '⏰', color: 'rgba(200, 100, 255, 0.8)', baseHealth: 150, size: 30, decayRate: 0.02, timeEffect: 0.5, affectedRadius: 50, duration: 200 },
+    portal_stone: { emoji: '🌀', color: 'rgba(100, 200, 255, 0.9)', baseHealth: 250, size: 32, decayRate: 0.01, teleportRange: 200, activationChance: 0.001, cooldown: 100 },
+    life_spring: { emoji: '⛲', color: 'rgba(100, 255, 255, 0.8)', baseHealth: 180, size: 28, decayRate: 0.008, healingRate: 1.5, healingRadius: 45, regeneration: 0.2 },
 };
 
 export class EcosystemElement {
@@ -1004,19 +1022,28 @@ class TribeElement extends EcosystemElement {
         super(id, x, y, 'tribe');
         this.population = initialPopulation;
         this.technologyLevel = elementDefinitions.tribe.technologyLevel;
+        this.lastPopulation = initialPopulation;
+        this.resourceCollectionRate = 1.0; // Can be modified by blessings/curses
+        this.reproductionChance = 0.0001; // Can be modified by blessings/curses
     }
 
     update(simulationState, config, weather, activeTechEffects, weatherEffects) {
         super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
 
-        // Tribe consumes resources (e.g., plants)
+        // Update tribal culture system if available
+        if (typeof window !== 'undefined' && window.tribalCultureSystem) {
+            window.tribalCultureSystem.updateTribalCulture(this.id, this);
+        }
+
+        // Tribe consumes resources (e.g., plants) - affected by cultural developments
+        const searchRadius = 100 + (this.technologyLevel * 20); // Better tech = larger search radius
         const nearbyPlants = simulationState.elements.filter(el =>
-            el.type === 'plant' && Math.hypot(this.x - el.x, this.y - el.y) < 100
+            el.type === 'plant' && Math.hypot(this.x - el.x, this.y - el.y) < searchRadius
         );
 
         if (nearbyPlants.length > 0 && this.population > 0) {
             const plantToConsume = nearbyPlants[0];
-            const consumptionRate = 0.1 * this.population;
+            const consumptionRate = 0.1 * this.population * this.resourceCollectionRate;
             if (plantToConsume.health > consumptionRate) {
                 plantToConsume.health -= consumptionRate;
                 this.health += consumptionRate * 0.1; // Tribe gains health from consuming
@@ -1027,27 +1054,150 @@ class TribeElement extends EcosystemElement {
             this.health -= 0.5; // Lose health if no food
         }
 
-        // Tribe population growth (slowly)
-        if (this.health > 100 && Math.random() < 0.0001 * this.technologyLevel) {
+        // Tribe population growth - affected by cultural developments
+        const culturalBonus = this.getCulturalBonus();
+        const adjustedReproductionChance = this.reproductionChance * this.technologyLevel * culturalBonus;
+        
+        if (this.health > 100 && Math.random() < adjustedReproductionChance) {
+            const oldPopulation = this.population;
             this.population += 1;
             logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} cresceu para ${this.population} indivíduos.`);
+            
+            // Publish population change event
+            if (typeof window !== 'undefined' && window.eventSystem) {
+                window.eventSystem.publish('population_change', {
+                    species: 'tribe',
+                    tribeId: this.id,
+                    oldPopulation: oldPopulation,
+                    newPopulation: this.population,
+                    change: 1
+                });
+            }
         }
 
-        // Tribe can research technologies (placeholder for now)
-        if (Math.random() < 0.00001 * this.technologyLevel) {
-            // logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} está pesquisando uma nova tecnologia!`);
-        }
-
-        // Tribe can build (placeholder for now)
-        if (Math.random() < 0.000005 * this.technologyLevel) {
-            // logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} está construindo algo!`);
-        }
+        // Cultural activities - enhanced based on development
+        this.performCulturalActivities();
 
         // Tribe can die if health is too low or population is zero
         if (this.health <= 0 || this.population <= 0) {
             logToObserver(`A tribo em ${this.x.toFixed(0)},${this.y.toFixed(0)} foi extinta.`);
             this.health = 0; // Ensure it's removed
         }
+
+        // Track population changes for cultural system
+        if (this.population !== this.lastPopulation) {
+            const change = this.population - this.lastPopulation;
+            if (typeof window !== 'undefined' && window.eventSystem && Math.abs(change) > 0) {
+                window.eventSystem.publish('population_change', {
+                    species: 'tribe',
+                    tribeId: this.id,
+                    oldPopulation: this.lastPopulation,
+                    newPopulation: this.population,
+                    change: change
+                });
+            }
+            this.lastPopulation = this.population;
+        }
+    }
+
+    /**
+     * Get cultural bonus multiplier based on tribal developments
+     */
+    getCulturalBonus() {
+        if (typeof window === 'undefined' || !window.tribalCultureSystem) {
+            return 1.0;
+        }
+
+        const culture = window.tribalCultureSystem.getTribalCulture(this.id);
+        if (!culture) return 1.0;
+
+        // Calculate bonus based on cultural stats
+        const unityBonus = culture.stats.unity / 100;
+        const stabilityBonus = culture.stability / 100;
+        const developmentBonus = culture.developmentLevel / 5;
+
+        return 1.0 + (unityBonus * 0.3) + (stabilityBonus * 0.2) + (developmentBonus * 0.5);
+    }
+
+    /**
+     * Perform cultural activities based on development level
+     */
+    performCulturalActivities() {
+        if (typeof window === 'undefined' || !window.tribalCultureSystem) {
+            return;
+        }
+
+        const culture = window.tribalCultureSystem.getTribalCulture(this.id);
+        if (!culture) return;
+
+        // Perform activities based on traditions
+        culture.traditions.forEach(tradition => {
+            this.performTraditionActivity(tradition);
+        });
+
+        // Perform activities based on behaviors
+        culture.behaviors.forEach(behavior => {
+            this.performBehaviorActivity(behavior);
+        });
+    }
+
+    /**
+     * Perform tradition-based activities
+     */
+    performTraditionActivity(tradition) {
+        switch (tradition.name) {
+            case 'Festival da Colheita':
+                if (Math.random() < 0.001) { // 0.1% chance per update
+                    this.health += 5; // Boost health during festival
+                    logToObserver(`🎉 A tribo realiza o ${tradition.name}!`);
+                }
+                break;
+            case 'Ritual da Chuva':
+                if (Math.random() < 0.0005) { // 0.05% chance per update
+                    // Could influence weather system if available
+                    logToObserver(`🌧️ A tribo realiza o ${tradition.name}!`);
+                }
+                break;
+            case 'Conselho dos Anciãos':
+                // Provides stability bonus (already calculated in cultural bonus)
+                break;
+        }
+    }
+
+    /**
+     * Perform behavior-based activities
+     */
+    performBehaviorActivity(behavior) {
+        switch (behavior.name) {
+            case 'Caça Cooperativa':
+                // Improved hunting efficiency (affects resource collection)
+                this.resourceCollectionRate = Math.max(this.resourceCollectionRate, 1.25);
+                break;
+            case 'Agricultura Rotativa':
+                // Better food production and sustainability
+                if (Math.random() < 0.0001) {
+                    this.health += 2; // Small health boost from better agriculture
+                }
+                break;
+            case 'Defesa Territorial':
+                // Provides protection bonus
+                break;
+            case 'Cuidado Comunitário':
+                // Improves population growth
+                this.reproductionChance = Math.max(this.reproductionChance, 0.00015);
+                break;
+        }
+    }
+
+    /**
+     * Get cultural information for display
+     */
+    getCulturalInfo() {
+        if (typeof window === 'undefined' || !window.tribalCultureSystem) {
+            return null;
+        }
+
+        return window.tribalCultureSystem.getCulturalSummary(this.id);
     }
 }
 
@@ -1229,6 +1379,651 @@ class ExtractionProbeElement extends EcosystemElement {
     }
 }
 
+// NEW PLANT CLASSES - Unique behaviors
+class CarnivorousPlantElement extends PlantElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'carnivorous_plant';
+        this.emoji = elementDefinitions.carnivorous_plant.emoji;
+        this.huntingRange = elementDefinitions.carnivorous_plant.huntingRange;
+        this.digestTime = elementDefinitions.carnivorous_plant.digestTime;
+        this.currentPrey = null;
+        this.digestingTime = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Carnivorous behavior - hunt small creatures
+        if (!this.currentPrey && this.digestingTime <= 0) {
+            const nearbyPrey = simulationState.elements.filter(el =>
+                (el.type === 'creature' || el.type === 'flying_creature') && 
+                el.health > 0 && 
+                Math.hypot(this.x - el.x, this.y - el.y) < this.huntingRange &&
+                el.size < this.size * 0.8 // Only hunt smaller creatures
+            );
+            
+            if (nearbyPrey.length > 0) {
+                this.currentPrey = nearbyPrey[0];
+                this.digestingTime = this.digestTime;
+                logToObserver(`Planta carnívora capturou ${this.currentPrey.type} em ${this.x.toFixed(0)},${this.y.toFixed(0)}!`);
+            }
+        }
+        
+        // Digest prey
+        if (this.currentPrey && this.digestingTime > 0) {
+            this.digestingTime--;
+            this.currentPrey.health -= 2; // Slowly digest
+            this.health += 1; // Gain health from prey
+            this.energy += 0.5; // Gain energy from prey
+            
+            if (this.currentPrey.health <= 0 || this.digestingTime <= 0) {
+                if (this.currentPrey.health <= 0) {
+                    logToObserver(`Planta carnívora digeriu completamente ${this.currentPrey.type}.`);
+                }
+                this.currentPrey = null;
+                this.digestingTime = 0;
+            }
+        }
+    }
+}
+
+class CrystalTreeElement extends PlantElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'crystal_tree';
+        this.emoji = elementDefinitions.crystal_tree.emoji;
+        this.crystalGrowth = elementDefinitions.crystal_tree.crystalGrowth;
+        this.energyStorage = elementDefinitions.crystal_tree.energyStorage;
+        this.storedEnergy = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Store excess energy as crystals
+        if (this.health > 150) {
+            const excessEnergy = (this.health - 150) * 0.1;
+            this.storedEnergy += excessEnergy;
+            this.health -= excessEnergy;
+        }
+        
+        // Release stored energy to nearby plants during harsh conditions
+        if (weather.type === 'drought' || weather.type === 'blizzard') {
+            const nearbyPlants = simulationState.elements.filter(el =>
+                (el.type === 'plant' || el.type.includes('plant')) && 
+                el !== this && 
+                Math.hypot(this.x - el.x, this.y - el.y) < 60
+            );
+            
+            if (nearbyPlants.length > 0 && this.storedEnergy > 10) {
+                const energyPerPlant = Math.min(this.storedEnergy / nearbyPlants.length, 5);
+                nearbyPlants.forEach(plant => {
+                    plant.health += energyPerPlant;
+                    this.storedEnergy -= energyPerPlant;
+                });
+                logToObserver(`Árvore de cristal compartilhou energia com plantas próximas.`);
+            }
+        }
+        
+        // Grow crystal formations
+        if (this.storedEnergy > 50 && Math.random() < this.crystalGrowth) {
+            this.size += 0.5;
+            this.storedEnergy -= 20;
+        }
+    }
+}
+
+class SporeMossElement extends PlantElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'spore_moss';
+        this.emoji = elementDefinitions.spore_moss.emoji;
+        this.sporeRange = elementDefinitions.spore_moss.sporeRange;
+        this.spreadRate = elementDefinitions.spore_moss.spreadRate;
+        this.lastSporeRelease = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Release spores to spread rapidly
+        if (this.health > 40 && Math.random() < this.spreadRate) {
+            const sporeCount = Math.floor(Math.random() * 3) + 1;
+            
+            for (let i = 0; i < sporeCount; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * this.sporeRange;
+                const newX = this.x + Math.cos(angle) * distance;
+                const newY = this.y + Math.sin(angle) * distance;
+                
+                // Check if location is suitable (not too close to existing moss)
+                const nearbyMoss = simulationState.elements.filter(el =>
+                    el.type === 'spore_moss' && 
+                    Math.hypot(newX - el.x, newY - el.y) < 25
+                );
+                
+                if (nearbyMoss.length === 0) {
+                    simulationState.newElements.push(
+                        new SporeMossElement(Date.now() + Math.random(), newX, newY)
+                    );
+                }
+            }
+            
+            this.health -= 10; // Cost of spore production
+            logToObserver(`Musgo de esporos se espalhou em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+        }
+        
+        // Network effect - moss patches support each other
+        const nearbyMoss = simulationState.elements.filter(el =>
+            el.type === 'spore_moss' && 
+            el !== this && 
+            Math.hypot(this.x - el.x, this.y - el.y) < 40
+        );
+        
+        if (nearbyMoss.length > 0) {
+            this.health += nearbyMoss.length * 0.2; // Network bonus
+        }
+    }
+}
+
+class FireFlowerElement extends PlantElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'fire_flower';
+        this.emoji = elementDefinitions.fire_flower.emoji;
+        this.heatRadius = elementDefinitions.fire_flower.heatRadius;
+        this.fireResistance = elementDefinitions.fire_flower.fireResistance;
+        this.heatIntensity = 1.0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Thrive in hot conditions
+        if (config.temperature > 30) {
+            this.health += (config.temperature - 30) * 0.1;
+            this.heatIntensity = 1.0 + (config.temperature - 30) * 0.02;
+        }
+        
+        // Generate heat that affects nearby elements
+        const nearbyElements = simulationState.elements.filter(el =>
+            el !== this && 
+            Math.hypot(this.x - el.x, this.y - el.y) < this.heatRadius
+        );
+        
+        nearbyElements.forEach(el => {
+            if (el.type === 'creature' || el.type === 'aquatic_creature') {
+                // Heat stress on creatures
+                el.health -= 0.3 * this.heatIntensity;
+            } else if (el.type === 'water') {
+                // Evaporate water
+                el.health -= 0.5 * this.heatIntensity;
+            } else if (el.type === 'plant' && !el.type.includes('fire')) {
+                // Damage other plants
+                el.health -= 0.2 * this.heatIntensity;
+            }
+        });
+        
+        // Resist fire-based weather
+        if (weather.type === 'heatwave' || weather.type === 'drought') {
+            this.health *= (1 + this.fireResistance * 0.5); // Bonus in fire weather
+        }
+    }
+}
+
+// NEW CREATURE CLASSES - Specific ecological niches
+class AquaticCreatureElement extends CreatureElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'aquatic_creature';
+        this.emoji = elementDefinitions.aquatic_creature.emoji;
+        this.waterDependency = elementDefinitions.aquatic_creature.waterDependency;
+        this.preferredBiome = 'aquatic';
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Must stay near water sources
+        const nearbyWater = simulationState.elements.filter(el =>
+            el.type === 'water' && 
+            Math.hypot(this.x - el.x, this.y - el.y) < 50
+        );
+        
+        if (nearbyWater.length === 0) {
+            this.health -= 2; // Rapid health loss without water
+            logToObserver(`Criatura aquática está desidratando em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+        } else {
+            this.health += 0.5; // Health bonus near water
+        }
+        
+        // Enhanced movement in water
+        if (nearbyWater.length > 0) {
+            this.speed *= 1.5; // Faster in water
+        }
+        
+        // Filter feeding - clean water and gain nutrients
+        nearbyWater.forEach(water => {
+            if (Math.hypot(this.x - water.x, this.y - water.y) < 30) {
+                water.health += 0.2; // Clean the water
+                this.energy += 0.3; // Gain energy from filtering
+            }
+        });
+    }
+}
+
+class FlyingCreatureElement extends CreatureElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'flying_creature';
+        this.emoji = elementDefinitions.flying_creature.emoji;
+        this.flightHeight = elementDefinitions.flying_creature.flightHeight;
+        this.pollinationRate = elementDefinitions.flying_creature.pollinationRate;
+        this.isFlying = true;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Pollination behavior - help plants reproduce
+        const nearbyPlants = simulationState.elements.filter(el =>
+            (el.type === 'plant' || el.type.includes('plant')) && 
+            Math.hypot(this.x - el.x, this.y - el.y) < 40
+        );
+        
+        nearbyPlants.forEach(plant => {
+            if (Math.random() < this.pollinationRate) {
+                plant.reproductionChance *= 1.5; // Boost plant reproduction
+                this.energy += 0.2; // Gain energy from nectar
+                
+                // Cross-pollination between different plants
+                const otherPlants = nearbyPlants.filter(p => p !== plant);
+                if (otherPlants.length > 0 && Math.random() < 0.3) {
+                    logToObserver(`Criatura voadora polinizou plantas em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+                }
+            }
+        });
+        
+        // Weather effects on flying
+        if (weather.type === 'stormy' || weather.type === 'blizzard') {
+            this.speed *= 0.3; // Severely hampered by storms
+            this.health -= 1; // Storm damage
+        } else if (weather.type === 'windy') {
+            this.speed *= 1.2; // Benefit from wind
+        }
+        
+        // Avoid ground predators
+        const nearbyPredators = simulationState.elements.filter(el =>
+            el.type === 'predator' && 
+            Math.hypot(this.x - el.x, this.y - el.y) < 80
+        );
+        
+        if (nearbyPredators.length > 0) {
+            this.isFlying = true; // Stay airborne
+            this.speed *= 1.3; // Escape speed
+        }
+    }
+}
+
+class BurrowingCreatureElement extends CreatureElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'burrowing_creature';
+        this.emoji = elementDefinitions.burrowing_creature.emoji;
+        this.burrowDepth = elementDefinitions.burrowing_creature.burrowDepth;
+        this.soilAeration = elementDefinitions.burrowing_creature.soilAeration;
+        this.isBurrowed = false;
+        this.burrowCooldown = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        if (this.burrowCooldown > 0) this.burrowCooldown--;
+        
+        // Burrow during extreme weather
+        if ((weather.type === 'stormy' || weather.type === 'heatwave' || weather.type === 'blizzard') && 
+            !this.isBurrowed && this.burrowCooldown === 0) {
+            this.isBurrowed = true;
+            this.burrowCooldown = 50;
+            logToObserver(`Criatura escavadora se enterrou para se proteger em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+        }
+        
+        // Emerge when weather improves
+        if (this.isBurrowed && weather.type === 'sunny' && Math.random() < 0.1) {
+            this.isBurrowed = false;
+            logToObserver(`Criatura escavadora emergiu do solo em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+        }
+        
+        // Burrowing benefits
+        if (this.isBurrowed) {
+            this.health += 0.5; // Protection bonus
+            this.speed *= 0.2; // Slower movement while burrowed
+        }
+        
+        // Soil aeration - help nearby plants
+        const nearbyPlants = simulationState.elements.filter(el =>
+            (el.type === 'plant' || el.type.includes('plant')) && 
+            Math.hypot(this.x - el.x, this.y - el.y) < 35
+        );
+        
+        nearbyPlants.forEach(plant => {
+            plant.health += this.soilAeration; // Soil improvement
+        });
+        
+        // Hide from predators when burrowed
+        if (this.isBurrowed) {
+            this.fleeingFrom = null; // Can't be detected underground
+        }
+    }
+}
+
+class SymbioticCreatureElement extends CreatureElement {
+    constructor(id, x, y, parentGenome = null) {
+        super(id, x, y, parentGenome);
+        this.type = 'symbiotic_creature';
+        this.emoji = elementDefinitions.symbiotic_creature.emoji;
+        this.colonySize = elementDefinitions.symbiotic_creature.colonySize;
+        this.mutualism = elementDefinitions.symbiotic_creature.mutualism;
+        this.symbioticPartner = null;
+        this.partnershipBenefit = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        // Find symbiotic partner if none exists
+        if (!this.symbioticPartner || this.symbioticPartner.health <= 0) {
+            const potentialPartners = simulationState.elements.filter(el =>
+                (el.type === 'plant' || el.type.includes('plant') || el.type === 'fungus') && 
+                Math.hypot(this.x - el.x, this.y - el.y) < 50 &&
+                el.health > 50
+            );
+            
+            if (potentialPartners.length > 0) {
+                this.symbioticPartner = potentialPartners[0];
+                this.partnershipBenefit = 0.5;
+                logToObserver(`Criatura simbiótica formou parceria com ${this.symbioticPartner.type} em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+            }
+        }
+        
+        // Maintain symbiotic relationship
+        if (this.symbioticPartner && this.symbioticPartner.health > 0) {
+            // Stay close to partner
+            const distance = Math.hypot(this.x - this.symbioticPartner.x, this.y - this.symbioticPartner.y);
+            if (distance > 30) {
+                const angle = Math.atan2(this.symbioticPartner.y - this.y, this.symbioticPartner.x - this.x);
+                this.x += Math.cos(angle) * this.speed * 0.5;
+                this.y += Math.sin(angle) * this.speed * 0.5;
+            }
+            
+            // Mutual benefits
+            this.health += this.partnershipBenefit;
+            this.energy += this.partnershipBenefit * 0.8;
+            this.symbioticPartner.health += this.partnershipBenefit * 0.7;
+            
+            // Protect partner from threats
+            const nearbyThreats = simulationState.elements.filter(el =>
+                el.type === 'predator' && 
+                Math.hypot(this.symbioticPartner.x - el.x, this.symbioticPartner.y - el.y) < 40
+            );
+            
+            if (nearbyThreats.length > 0) {
+                nearbyThreats.forEach(threat => {
+                    threat.health -= 0.5; // Defensive behavior
+                });
+                logToObserver(`Criatura simbiótica defendeu seu parceiro de predadores.`);
+            }
+        }
+        
+        // Colony behavior - work together with other symbiotic creatures
+        const nearbyColony = simulationState.elements.filter(el =>
+            el.type === 'symbiotic_creature' && 
+            el !== this && 
+            Math.hypot(this.x - el.x, this.y - el.y) < 60
+        );
+        
+        if (nearbyColony.length >= this.colonySize - 1) {
+            this.health += nearbyColony.length * 0.1; // Colony strength bonus
+            this.reproductionChance *= 1.2; // Better reproduction in groups
+        }
+    }
+}
+
+// NEW SPECIAL ELEMENT CLASSES - Unique effects
+class EnergyCrystalElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'energy_crystal');
+        this.energyOutput = elementDefinitions.energy_crystal.energyOutput;
+        this.resonanceRange = elementDefinitions.energy_crystal.resonanceRange;
+        this.amplification = elementDefinitions.energy_crystal.amplification;
+        this.pulseTimer = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        this.pulseTimer++;
+        
+        // Energy pulse every 20 ticks
+        if (this.pulseTimer >= 20) {
+            this.pulseTimer = 0;
+            
+            // Energize nearby elements
+            const nearbyElements = simulationState.elements.filter(el =>
+                el !== this && 
+                Math.hypot(this.x - el.x, this.y - el.y) < this.resonanceRange
+            );
+            
+            nearbyElements.forEach(el => {
+                if (el.type === 'plant' || el.type.includes('plant')) {
+                    el.health += this.energyOutput * this.amplification;
+                    el.energy += this.energyOutput;
+                } else if (el.type === 'creature' || el.type.includes('creature')) {
+                    el.energy += this.energyOutput * 0.8;
+                } else if (el.type === 'tribe') {
+                    el.health += this.energyOutput * 0.5;
+                }
+            });
+            
+            if (nearbyElements.length > 0) {
+                logToObserver(`Cristal de energia energizou ${nearbyElements.length} elementos próximos.`);
+            }
+        }
+        
+        // Resonate with other crystals
+        const nearbyCrystals = simulationState.elements.filter(el =>
+            el.type === 'energy_crystal' && 
+            el !== this && 
+            Math.hypot(this.x - el.x, this.y - el.y) < this.resonanceRange * 2
+        );
+        
+        if (nearbyCrystals.length > 0) {
+            this.amplification += nearbyCrystals.length * 0.1; // Resonance amplification
+            this.health += nearbyCrystals.length * 0.2; // Mutual reinforcement
+        }
+    }
+}
+
+class TimeAnomalyElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'time_anomaly');
+        this.timeEffect = elementDefinitions.time_anomaly.timeEffect;
+        this.affectedRadius = elementDefinitions.time_anomaly.affectedRadius;
+        this.duration = elementDefinitions.time_anomaly.duration;
+        this.remainingDuration = this.duration;
+        this.effectType = Math.random() < 0.5 ? 'accelerate' : 'decelerate';
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        this.remainingDuration--;
+        
+        if (this.remainingDuration <= 0) {
+            this.health = 0; // Anomaly dissipates
+            logToObserver(`Anomalia temporal dissipou-se em ${this.x.toFixed(0)},${this.y.toFixed(0)}.`);
+            return;
+        }
+        
+        // Apply time effects to nearby elements
+        const affectedElements = simulationState.elements.filter(el =>
+            el !== this && 
+            Math.hypot(this.x - el.x, this.y - el.y) < this.affectedRadius
+        );
+        
+        affectedElements.forEach(el => {
+            if (this.effectType === 'accelerate') {
+                // Speed up processes
+                if (el.type === 'plant' || el.type.includes('plant')) {
+                    el.reproductionChance *= (1 + this.timeEffect);
+                    el.health += 0.5; // Faster growth
+                } else if (el.type === 'creature' || el.type.includes('creature')) {
+                    el.speed *= (1 + this.timeEffect);
+                    el.age += 2; // Age faster
+                }
+            } else {
+                // Slow down processes
+                if (el.type === 'plant' || el.type.includes('plant')) {
+                    el.decayRate *= (1 - this.timeEffect);
+                } else if (el.type === 'creature' || el.type.includes('creature')) {
+                    el.speed *= (1 - this.timeEffect);
+                    el.decayRate *= (1 - this.timeEffect); // Age slower
+                }
+            }
+        });
+        
+        // Visual effect intensity based on remaining duration
+        this.size = elementDefinitions.time_anomaly.size * (this.remainingDuration / this.duration);
+    }
+}
+
+class PortalStoneElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'portal_stone');
+        this.teleportRange = elementDefinitions.portal_stone.teleportRange;
+        this.activationChance = elementDefinitions.portal_stone.activationChance;
+        this.cooldown = elementDefinitions.portal_stone.cooldown;
+        this.currentCooldown = 0;
+        this.linkedPortal = null;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        if (this.currentCooldown > 0) this.currentCooldown--;
+        
+        // Find or create portal link
+        if (!this.linkedPortal || this.linkedPortal.health <= 0) {
+            const otherPortals = simulationState.elements.filter(el =>
+                el.type === 'portal_stone' && 
+                el !== this && 
+                el.health > 0
+            );
+            
+            if (otherPortals.length > 0) {
+                this.linkedPortal = otherPortals[0];
+                this.linkedPortal.linkedPortal = this; // Bidirectional link
+                logToObserver(`Pedras portais conectadas entre ${this.x.toFixed(0)},${this.y.toFixed(0)} e ${this.linkedPortal.x.toFixed(0)},${this.linkedPortal.y.toFixed(0)}.`);
+            }
+        }
+        
+        // Portal activation
+        if (this.linkedPortal && this.currentCooldown === 0 && Math.random() < this.activationChance) {
+            const nearbyElements = simulationState.elements.filter(el =>
+                (el.type === 'creature' || el.type.includes('creature')) && 
+                Math.hypot(this.x - el.x, this.y - el.y) < 25
+            );
+            
+            if (nearbyElements.length > 0) {
+                const teleportedElement = nearbyElements[0];
+                teleportedElement.x = this.linkedPortal.x + (Math.random() - 0.5) * 30;
+                teleportedElement.y = this.linkedPortal.y + (Math.random() - 0.5) * 30;
+                
+                this.currentCooldown = this.cooldown;
+                this.linkedPortal.currentCooldown = this.cooldown;
+                
+                logToObserver(`${teleportedElement.type} foi teletransportado através do portal!`);
+            }
+        }
+        
+        // Portal energy drain
+        if (this.linkedPortal) {
+            this.health -= 0.1; // Maintaining portal connection costs energy
+        }
+    }
+}
+
+class LifeSpringElement extends EcosystemElement {
+    constructor(id, x, y) {
+        super(id, x, y, 'life_spring');
+        this.healingRate = elementDefinitions.life_spring.healingRate;
+        this.healingRadius = elementDefinitions.life_spring.healingRadius;
+        this.regeneration = elementDefinitions.life_spring.regeneration;
+        this.healingPulse = 0;
+    }
+    
+    update(simulationState, config, weather, activeTechEffects, weatherEffects) {
+        super.update(simulationState, config, weather, activeTechEffects, weatherEffects);
+        
+        this.healingPulse++;
+        
+        // Healing pulse every 15 ticks
+        if (this.healingPulse >= 15) {
+            this.healingPulse = 0;
+            
+            // Heal nearby elements
+            const nearbyElements = simulationState.elements.filter(el =>
+                el !== this && 
+                el.health < (elementDefinitions[el.type]?.baseHealth || 100) &&
+                Math.hypot(this.x - el.x, this.y - el.y) < this.healingRadius
+            );
+            
+            nearbyElements.forEach(el => {
+                el.health += this.healingRate;
+                
+                // Cap health at maximum
+                const maxHealth = elementDefinitions[el.type]?.baseHealth || 100;
+                if (el.health > maxHealth) {
+                    el.health = maxHealth;
+                }
+            });
+            
+            if (nearbyElements.length > 0) {
+                logToObserver(`Fonte da vida curou ${nearbyElements.length} elementos próximos.`);
+            }
+        }
+        
+        // Self-regeneration
+        this.health += this.regeneration;
+        const maxHealth = elementDefinitions.life_spring.baseHealth;
+        if (this.health > maxHealth) {
+            this.health = maxHealth;
+        }
+        
+        // Create life in barren areas
+        if (Math.random() < 0.001) {
+            const nearbyLife = simulationState.elements.filter(el =>
+                (el.type === 'plant' || el.type.includes('plant')) && 
+                Math.hypot(this.x - el.x, this.y - el.y) < this.healingRadius
+            );
+            
+            if (nearbyLife.length < 3) {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * this.healingRadius;
+                const newX = this.x + Math.cos(angle) * distance;
+                const newY = this.y + Math.sin(angle) * distance;
+                
+                simulationState.newElements.push(
+                    new PlantElement(Date.now() + Math.random(), newX, newY)
+                );
+                logToObserver(`Fonte da vida gerou nova vida vegetal.`);
+            }
+        }
+    }
+}
+
 export const elementClasses = {
     water: WaterElement,
     rock: RockElement,
@@ -1243,4 +2038,18 @@ export const elementClasses = {
     tribe: TribeElement,
     extractionProbe: ExtractionProbeElement,
     eraser: (id, x, y) => new EcosystemElement(id, x, y, 'eraser'),
+    
+    // NEW ELEMENT CLASSES
+    carnivorous_plant: CarnivorousPlantElement,
+    crystal_tree: CrystalTreeElement,
+    spore_moss: SporeMossElement,
+    fire_flower: FireFlowerElement,
+    aquatic_creature: AquaticCreatureElement,
+    flying_creature: FlyingCreatureElement,
+    burrowing_creature: BurrowingCreatureElement,
+    symbiotic_creature: SymbioticCreatureElement,
+    energy_crystal: EnergyCrystalElement,
+    time_anomaly: TimeAnomalyElement,
+    portal_stone: PortalStoneElement,
+    life_spring: LifeSpringElement,
 };

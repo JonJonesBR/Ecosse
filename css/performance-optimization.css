@@ -1,0 +1,319 @@
+/**
+ * Performance Optimization Styles - Task 15
+ * 
+ * CSS optimizations for better rendering performance:
+ * - Hardware acceleration for animations
+ * - Optimized transitions
+ * - Lazy loading indicators
+ * - Performance-friendly hover effects
+ */
+
+/* Hardware acceleration for better performance */
+.element-category,
+.floating-controls-panel,
+.panel-overlay,
+.category-content {
+    will-change: transform, opacity;
+    transform: translateZ(0); /* Force hardware acceleration */
+}
+
+/* Optimized transitions */
+.category-content {
+    transition: opacity 0.2s ease-out, max-height 0.3s ease-out;
+    overflow: hidden;
+}
+
+.category-content.collapsing {
+    max-height: 0;
+    opacity: 0;
+}
+
+.category-content.expanding {
+    opacity: 1;
+}
+
+/* Lazy loading indicators */
+.category-loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    color: #666;
+    font-size: 14px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    margin: 10px 0;
+}
+
+.category-loading i {
+    margin-right: 8px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Performance-optimized hover effects */
+.element-item {
+    transition: transform 0.15s ease-out, box-shadow 0.15s ease-out;
+    backface-visibility: hidden;
+}
+
+.element-item:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* Touch-friendly optimizations */
+.touch-device .element-item {
+    transition: none; /* Disable transitions on touch devices for better performance */
+}
+
+.touch-friendly {
+    min-width: 44px;
+    min-height: 44px;
+    touch-action: manipulation;
+}
+
+.touch-active {
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: scale(0.95);
+}
+
+/* Compact mode optimizations */
+.compact-mode .element-item {
+    padding: 8px;
+    font-size: 12px;
+    min-height: 36px;
+}
+
+.compact-mode .element-grid {
+    gap: 4px;
+}
+
+.compact-mode .category-header {
+    padding: 8px 12px;
+}
+
+/* Enhanced tooltip performance */
+.enhanced-tooltip {
+    position: fixed;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    pointer-events: none;
+    z-index: 10000;
+    opacity: 0;
+    transform: translateY(5px);
+    transition: opacity 0.2s ease-out, transform 0.2s ease-out;
+    will-change: transform, opacity;
+}
+
+.enhanced-tooltip.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* Smart layout feedback */
+.smart-layout-feedback {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.9);
+    color: white;
+    padding: 16px;
+    border-radius: 8px;
+    max-width: 300px;
+    z-index: 10001;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+}
+
+.smart-layout-feedback.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.smart-layout-feedback h4 {
+    margin: 0 0 8px 0;
+    font-size: 14px;
+    color: #4CAF50;
+}
+
+.smart-layout-feedback p {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+}
+
+.smart-layout-feedback ul {
+    margin: 0;
+    padding-left: 16px;
+    font-size: 11px;
+}
+
+.smart-layout-feedback li {
+    margin-bottom: 4px;
+}
+
+/* Category management controls */
+.category-management-controls {
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.category-control-btn {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: white;
+    padding: 6px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    transition: background-color 0.2s ease-out;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.category-control-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.category-control-btn.active {
+    background: rgba(76, 175, 80, 0.3);
+    border-color: rgba(76, 175, 80, 0.5);
+}
+
+.category-control-btn i {
+    font-size: 10px;
+}
+
+/* Category toggle buttons */
+.category-toggle-btn {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 4px;
+    border-radius: 3px;
+    transition: color 0.2s ease-out, background-color 0.2s ease-out;
+    margin-left: auto;
+}
+
+.category-toggle-btn:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.category-toggle-btn i {
+    font-size: 12px;
+}
+
+/* Lazy loaded category indicator */
+.element-category.lazy-loaded {
+    border-left: 3px solid rgba(76, 175, 80, 0.5);
+}
+
+/* Performance metrics display (for debugging) */
+.performance-metrics {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px;
+    border-radius: 6px;
+    font-family: monospace;
+    font-size: 11px;
+    z-index: 9999;
+    max-width: 250px;
+    display: none; /* Hidden by default */
+}
+
+.performance-metrics.show {
+    display: block;
+}
+
+.performance-metrics h4 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    color: #4CAF50;
+}
+
+.performance-metrics .metric {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+}
+
+.performance-metrics .metric-value {
+    color: #FFC107;
+}
+
+/* Responsive optimizations */
+@media (max-width: 768px) {
+    .category-management-controls {
+        padding: 8px;
+        gap: 6px;
+    }
+    
+    .category-control-btn {
+        padding: 4px 6px;
+        font-size: 11px;
+    }
+    
+    .enhanced-tooltip {
+        font-size: 11px;
+        padding: 6px 8px;
+    }
+    
+    .smart-layout-feedback {
+        max-width: 250px;
+        padding: 12px;
+        right: 10px;
+        top: 10px;
+    }
+}
+
+/* Animation performance optimizations */
+@media (prefers-reduced-motion: reduce) {
+    .category-content,
+    .element-item,
+    .enhanced-tooltip,
+    .smart-layout-feedback,
+    .category-control-btn {
+        transition: none;
+        animation: none;
+    }
+    
+    .category-loading i {
+        animation: none;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .category-control-btn {
+        border-width: 2px;
+    }
+    
+    .enhanced-tooltip {
+        background: black;
+        border: 1px solid white;
+    }
+    
+    .smart-layout-feedback {
+        background: black;
+        border: 1px solid white;
+    }
+}

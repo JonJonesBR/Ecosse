@@ -100,6 +100,77 @@ export class ControlsManager {
         this.isInitialized = true;
         eventSystem.emit('controlsInitialized');
     }
+    
+    /**
+     * Handle layout changes from the layout manager
+     * @param {Object} layoutInfo - Layout change information
+     */
+    onLayoutChange(layoutInfo) {
+        try {
+            console.log('🎮 Controls Manager received layout change:', layoutInfo.viewportType);
+            
+            // Adjust gesture recognition for different viewports
+            this.adjustGestureRecognition(layoutInfo.viewportType);
+            
+            // Update selection modes for viewport
+            this.updateSelectionModesForViewport(layoutInfo.viewportType);
+            
+            // Adjust keyboard shortcuts if needed
+            this.adjustKeyboardShortcuts(layoutInfo.viewportType);
+            
+        } catch (error) {
+            console.error('❌ Error handling layout change in Controls Manager:', error);
+        }
+    }
+    
+    /**
+     * Adjust gesture recognition for viewport type
+     * @param {string} viewportType - Current viewport type
+     */
+    adjustGestureRecognition(viewportType) {
+        switch (viewportType) {
+            case 'mobile':
+                // Increase gesture threshold for touch
+                this.gestureThreshold = 15;
+                this.longPressDelay = 600;
+                break;
+            case 'tablet':
+                this.gestureThreshold = 12;
+                this.longPressDelay = 550;
+                break;
+            case 'desktop':
+                this.gestureThreshold = 10;
+                this.longPressDelay = 500;
+                break;
+        }
+    }
+    
+    /**
+     * Update selection modes for viewport
+     * @param {string} viewportType - Current viewport type
+     */
+    updateSelectionModesForViewport(viewportType) {
+        if (viewportType === 'mobile') {
+            // Simplify selection modes for mobile
+            this.selectionMode = 'single';
+            this.multiSelectEnabled = false;
+        } else {
+            // Enable advanced selection modes for larger screens
+            this.multiSelectEnabled = true;
+        }
+    }
+    
+    /**
+     * Adjust keyboard shortcuts for viewport
+     * @param {string} viewportType - Current viewport type
+     */
+    adjustKeyboardShortcuts(viewportType) {
+        // Mobile devices might not have physical keyboards
+        if (viewportType === 'mobile') {
+            // Keep shortcuts but mark them as less important
+            console.log('📱 Adjusting shortcuts for mobile viewport');
+        }
+    }
 
     /**
      * Setup keyboard shortcuts

@@ -1,0 +1,388 @@
+/**
+ * Layout Configuration System Styles
+ * Task 10: Create layout configuration system
+ */
+
+/* Settings Panel */
+.settings-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    max-width: 90vw;
+    max-height: 80vh;
+    background: rgba(15, 23, 42, 0.98);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 12px;
+    box-shadow: 0 25px 50px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(12px);
+    z-index: 1000;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.settings-panel.hidden {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.9);
+    pointer-events: none;
+}
+
+/* Settings Header */
+.settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+    background: rgba(30, 41, 59, 0.5);
+}
+
+.settings-header h3 {
+    margin: 0;
+    color: #e2e8f0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.close-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.25rem;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+    color: #e2e8f0;
+    background: rgba(239, 68, 68, 0.2);
+}
+
+/* Settings Content */
+.settings-content {
+    padding: 1.5rem;
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.settings-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.settings-content::-webkit-scrollbar-track {
+    background: rgba(30, 41, 59, 0.5);
+    border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.3);
+    border-radius: 3px;
+}
+
+.settings-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(59, 130, 246, 0.5);
+}
+
+/* Settings Sections */
+.settings-section {
+    margin-bottom: 2rem;
+}
+
+.settings-section h4 {
+    color: #3b82f6;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+/* Preset Buttons */
+.preset-buttons {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.preset-btn {
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid rgba(59, 130, 246, 0.2);
+    border-radius: 8px;
+    padding: 1rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.preset-btn:hover {
+    background: rgba(30, 41, 59, 1);
+    border-color: rgba(59, 130, 246, 0.4);
+    transform: translateY(-1px);
+}
+
+.preset-btn.active {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+.preset-name {
+    color: #e2e8f0;
+    font-weight: 600;
+    font-size: 0.95rem;
+    margin-bottom: 0.25rem;
+}
+
+.preset-description {
+    color: #94a3b8;
+    font-size: 0.8rem;
+    line-height: 1.3;
+}
+
+/* Panel Configuration */
+.panel-config {
+    background: rgba(30, 41, 59, 0.3);
+    border: 1px solid rgba(59, 130, 246, 0.1);
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.panel-config h5 {
+    color: #e2e8f0;
+    font-size: 1rem;
+    font-weight: 500;
+    margin: 0 0 0.75rem 0;
+}
+
+/* Form Controls */
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    margin-bottom: 0.75rem;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+    margin-right: 0.5rem;
+    accent-color: #3b82f6;
+}
+
+.range-label {
+    display: block;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.range-label input[type="range"] {
+    width: 100%;
+    margin-top: 0.5rem;
+    accent-color: #3b82f6;
+}
+
+.select-label {
+    display: block;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+}
+
+.select-label select {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.5rem;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+}
+
+.select-label select:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.6);
+}
+
+/* Settings Footer */
+.settings-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.5rem;
+    border-top: 1px solid rgba(59, 130, 246, 0.2);
+    background: rgba(30, 41, 59, 0.3);
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-secondary {
+    background: rgba(71, 85, 105, 0.8);
+    color: #e2e8f0;
+    border: 1px solid rgba(71, 85, 105, 0.5);
+}
+
+.btn-secondary:hover {
+    background: rgba(71, 85, 105, 1);
+    border-color: rgba(71, 85, 105, 0.8);
+}
+
+.btn-primary {
+    background: rgba(59, 130, 246, 0.8);
+    color: white;
+    border: 1px solid rgba(59, 130, 246, 0.5);
+}
+
+.btn-primary:hover {
+    background: rgba(59, 130, 246, 1);
+    border-color: rgba(59, 130, 246, 0.8);
+}
+
+/* Settings Backdrop */
+.settings-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+}
+
+/* Settings Toggle Button */
+.settings-toggle-btn {
+    background: rgba(59, 130, 246, 0.2);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 6px;
+    padding: 0.5rem;
+    color: #e2e8f0;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    margin-left: 0.5rem;
+}
+
+.settings-toggle-btn:hover {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.floating-settings-btn {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 100;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+/* Animation Disable Class */
+.no-animations * {
+    transition: none !important;
+    animation: none !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .settings-panel {
+        width: 95vw;
+        max-height: 90vh;
+    }
+    
+    .preset-buttons {
+        grid-template-columns: 1fr;
+    }
+    
+    .settings-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .settings-footer .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 480px) {
+    .settings-header {
+        padding: 1rem;
+    }
+    
+    .settings-content {
+        padding: 1rem;
+    }
+    
+    .settings-footer {
+        padding: 1rem;
+    }
+    
+    .panel-config {
+        padding: 0.75rem;
+    }
+}
+
+/* Custom Scrollbar for Webkit browsers */
+.settings-content {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.3) rgba(30, 41, 59, 0.5);
+}
+
+/* Focus styles for accessibility */
+.preset-btn:focus,
+.btn:focus,
+input:focus,
+select:focus {
+    outline: 2px solid rgba(59, 130, 246, 0.6);
+    outline-offset: 2px;
+}
+
+/* Hover effects for better UX */
+.checkbox-label:hover {
+    color: #f1f5f9;
+}
+
+.range-label:hover {
+    color: #f1f5f9;
+}
+
+.select-label:hover {
+    color: #f1f5f9;
+}
+
+/* Loading state for preset buttons */
+.preset-btn.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+.preset-btn.loading::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    margin: -8px 0 0 -8px;
+    border: 2px solid transparent;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}

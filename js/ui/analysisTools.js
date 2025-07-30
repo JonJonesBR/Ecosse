@@ -1,5 +1,6 @@
 // js/ui/analysisTools.js
 import { getEcosystemElements, getSimulationConfig } from '../simulation.js';
+import { domErrorHandler } from '../utils/domErrorHandler.js';
 
 /**
  * Advanced Analysis Tools for Ecosystem Visualization
@@ -39,8 +40,15 @@ export class AnalysisTools {
      * Create the analysis panel in the UI
      */
     createAnalysisPanel() {
-        const rightPanel = document.getElementById('right-panel');
-        if (!rightPanel) return;
+        // Use DOM Error Handler to safely find or create the right panel
+        const rightPanel = domErrorHandler.findOrCreatePanel('right-panel');
+        if (!rightPanel) {
+            console.error('Failed to find or create right panel for analysis tools');
+            return;
+        }
+
+        // Ensure simulation info panel exists and is properly positioned
+        const simInfoPanel = domErrorHandler.fixAnalysisToolsDOM(rightPanel);
 
         // Create analysis section
         const analysisSection = document.createElement('div');
@@ -113,12 +121,24 @@ export class AnalysisTools {
             </div>
         `;
 
-        // Insert before the existing simulation info panel
-        const simInfoPanel = document.getElementById('simulation-info-panel');
-        if (simInfoPanel) {
-            rightPanel.insertBefore(analysisSection, simInfoPanel);
-        } else {
+        // Use safe insertion method from DOM Error Handler
+        try {
+            const panelContent = rightPanel.querySelector('.panel-content');
+            if (panelContent && simInfoPanel && panelContent.contains(simInfoPanel)) {
+                // Use the safe insertBefore method
+                domErrorHandler.safeInsertBefore(analysisSection, simInfoPanel, panelContent);
+                console.log('✅ Analysis section inserted safely before simulation info panel');
+            } else {
+                // Fallback: append to panel content or right panel
+                const targetParent = panelContent || rightPanel;
+                targetParent.appendChild(analysisSection);
+                console.log('✅ Analysis section appended to panel (fallback method)');
+            }
+        } catch (error) {
+            console.error('Error inserting analysis section:', error);
+            // Final fallback: append to right panel
             rightPanel.appendChild(analysisSection);
+            console.log('✅ Analysis section appended to right panel (final fallback)');
         }
     }
 

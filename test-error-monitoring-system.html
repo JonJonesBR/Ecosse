@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error Monitoring System Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .status-panel {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .status-card {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #007bff;
+        }
+        .status-card.healthy {
+            border-left-color: #28a745;
+        }
+        .status-card.warning {
+            border-left-color: #ffc107;
+        }
+        .status-card.critical {
+            border-left-color: #dc3545;
+        }
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+        .btn-warning {
+            background-color: #ffc107;
+            color: black;
+        }
+        .btn-danger {
+            background-color: #dc3545;
+            color: white;
+        }
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+        .log-container {
+            background: #1e1e1e;
+            color: #f8f8f2;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .error-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .error-item {
+            background: #f8f9fa;
+            padding: 10px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            border-left: 3px solid #dc3545;
+        }
+        .error-item.fixed {
+            border-left-color: #28a745;
+            background: #d4edda;
+        }
+        .health-score {
+            font-size: 24px;
+            font-weight: bold;
+            text-align: center;
+        }
+        .health-score.healthy {
+            color: #28a745;
+        }
+        .health-score.warning {
+            color: #ffc107;
+        }
+        .health-score.critical {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Error Monitoring System Test Dashboard</h1>
+        <p>This page tests the comprehensive error monitoring system with real-time error detection, automated fixing, and system health monitoring.</p>
+    </div>
+
+    <div class="container">
+        <h2>📊 System Status</h2>
+        <div class="status-panel">
+            <div class="status-card" id="health-card">
+                <h3>Overall Health</h3>
+                <div class="health-score" id="health-score">Loading...</div>
+            </div>
+            <div class="status-card" id="errors-card">
+                <h3>Error Count</h3>
+                <div id="error-count">Loading...</div>
+            </div>
+            <div class="status-card" id="monitoring-card">
+                <h3>Monitoring Status</h3>
+                <div id="monitoring-status">Loading...</div>
+            </div>
+            <div class="status-card" id="performance-card">
+                <h3>Performance</h3>
+                <div id="performance-metrics">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🧪 Test Controls</h2>
+        <div class="test-controls">
+            <button class="btn-primary" onclick="runAllTests()">Run All Tests</button>
+            <button class="btn-warning" onclick="simulateDOMError()">Simulate DOM Error</button>
+            <button class="btn-warning" onclick="simulateMissingElement()">Simulate Missing Element</button>
+            <button class="btn-warning" onclick="simulateMissingMethod()">Simulate Missing Method</button>
+            <button class="btn-danger" onclick="simulatePerformanceError()">Simulate Performance Error</button>
+            <button class="btn-success" onclick="forceHealthCheck()">Force Health Check</button>
+            <button class="btn-primary" onclick="resetSystem()">Reset System</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>🐛 Recent Errors</h2>
+        <div class="error-list" id="error-list">
+            <p>No errors detected yet.</p>
+        </div>
+    </div>
+
+    <div class="container">
+        <h2>📝 Console Log</h2>
+        <div class="log-container" id="console-log">
+            <div>Error monitoring system initializing...</div>
+        </div>
+    </div>
+
+    <!-- Test elements for DOM operations -->
+    <div id="main-content" style="display: none;">
+        <div id="canvas-area"></div>
+        <div id="left-panel"></div>
+        <div id="right-panel"></div>
+    </div>
+
+    <script src="js/errorMonitoringSystem.js"></script>
+    <script src="js/test-error-monitoring-system.js"></script>
+    <script>
+        // Dashboard functionality
+        let logContainer;
+        let originalConsoleLog;
+
+        function initializeDashboard() {
+            logContainer = document.getElementById('console-log');
+            
+            // Capture console output
+            originalConsoleLog = console.log;
+            console.log = function(...args) {
+                originalConsoleLog.apply(console, args);
+                appendToLog(args.join(' '), 'log');
+            };
+
+            const originalConsoleWarn = console.warn;
+            console.warn = function(...args) {
+                originalConsoleWarn.apply(console, args);
+                appendToLog(args.join(' '), 'warn');
+            };
+
+            const originalConsoleError = console.error;
+            console.error = function(...args) {
+                originalConsoleError.apply(console, args);
+                appendToLog(args.join(' '), 'error');
+            };
+
+            // Update dashboard every 2 seconds
+            setInterval(updateDashboard, 2000);
+            
+            // Initial update
+            setTimeout(updateDashboard, 1000);
+        }
+
+        function appendToLog(message, type) {
+            if (!logContainer) return;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#ff6b6b' : type === 'warn' ? '#ffd93d' : '#6bcf7f';
+            
+            const logEntry = document.createElement('div');
+            logEntry.innerHTML = `<span style="color: #888;">[${timestamp}]</span> <span style="color: ${color};">${message}</span>`;
+            
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // Keep only last 50 log entries
+            while (logContainer.children.length > 50) {
+                logContainer.removeChild(logContainer.firstChild);
+            }
+        }
+
+        function updateDashboard() {
+            if (!window.errorMonitoringSystem) return;
+
+            const status = window.errorMonitoringSystem.getSystemStatus();
+            
+            // Update health score
+            const healthScore = document.getElementById('health-score');
+            const healthCard = document.getElementById('health-card');
+            if (healthScore && healthCard) {
+                healthScore.textContent = `${status.systemHealth.overallHealth}%`;
+                healthScore.className = 'health-score ' + getHealthClass(status.systemHealth.overallHealth);
+                healthCard.className = 'status-card ' + getHealthClass(status.systemHealth.overallHealth);
+            }
+
+            // Update error count
+            const errorCount = document.getElementById('error-count');
+            if (errorCount) {
+                errorCount.textContent = `${status.errorCount} total, ${status.recentErrorCount} recent`;
+            }
+
+            // Update monitoring status
+            const monitoringStatus = document.getElementById('monitoring-status');
+            if (monitoringStatus) {
+                monitoringStatus.textContent = status.isMonitoring ? '🟢 Active' : '🔴 Inactive';
+            }
+
+            // Update performance metrics
+            const performanceMetrics = document.getElementById('performance-metrics');
+            if (performanceMetrics) {
+                performanceMetrics.innerHTML = `
+                    Memory: ${status.performanceMetrics.memoryUsage}%<br>
+                    Response: ${status.performanceMetrics.averageResponseTime}ms
+                `;
+            }
+
+            // Update error list
+            updateErrorList(status.lastErrors);
+        }
+
+        function updateErrorList(errors) {
+            const errorList = document.getElementById('error-list');
+            if (!errorList) return;
+
+            if (errors.length === 0) {
+                errorList.innerHTML = '<p>No errors detected yet.</p>';
+                return;
+            }
+
+            errorList.innerHTML = errors.map(error => `
+                <div class="error-item ${error.fixed ? 'fixed' : ''}">
+                    <strong>${error.severity.toUpperCase()}</strong> - ${error.message}
+                    <br><small>Source: ${error.source} | ${new Date(error.timestamp).toLocaleTimeString()}</small>
+                    ${error.fixed ? '<br><small style="color: #28a745;">✅ Auto-fixed: ' + error.fixApplied + '</small>' : ''}
+                </div>
+            `).join('');
+        }
+
+        function getHealthClass(health) {
+            if (health >= 80) return 'healthy';
+            if (health >= 50) return 'warning';
+            return 'critical';
+        }
+
+        // Test functions
+        function runAllTests() {
+            if (window.errorMonitoringSystemTest) {
+                window.errorMonitoringSystemTest.runAllTests();
+            }
+        }
+
+        function simulateDOMError() {
+            window.errorMonitoringSystem.reportError({
+                type: 'dom',
+                message: 'Failed to execute insertBefore on Node: parameter 1 is not of type Node',
+                source: 'test-simulation',
+                timestamp: Date.now()
+            });
+            console.log('🧪 Simulated DOM error');
+        }
+
+        function simulateMissingElement() {
+            window.errorMonitoringSystem.reportError({
+                type: 'dom',
+                message: 'Cannot find element with id: missing-test-element',
+                source: 'test-simulation',
+                timestamp: Date.now()
+            });
+            console.log('🧪 Simulated missing element error');
+        }
+
+        function simulateMissingMethod() {
+            window.errorMonitoringSystem.reportError({
+                type: 'integration',
+                message: 'responsiveCanvasContainer.setAutoResize is not a function',
+                source: 'test-simulation',
+                timestamp: Date.now()
+            });
+            console.log('🧪 Simulated missing method error');
+        }
+
+        function simulatePerformanceError() {
+            window.errorMonitoringSystem.reportError({
+                type: 'performance',
+                message: 'Performance timeout: operation took longer than expected',
+                source: 'test-simulation',
+                timestamp: Date.now()
+            });
+            console.log('🧪 Simulated performance error');
+        }
+
+        function forceHealthCheck() {
+            const health = window.errorMonitoringSystem.forceHealthCheck();
+            console.log('🔍 Forced health check:', health);
+        }
+
+        function resetSystem() {
+            window.errorMonitoringSystem.reset();
+            console.log('🔄 System reset');
+        }
+
+        // Initialize dashboard when page loads
+        document.addEventListener('DOMContentLoaded', initializeDashboard);
+    </script>
+</body>
+</html>

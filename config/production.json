@@ -1,0 +1,42 @@
+{
+  "environment": "production",
+  "resources": {
+    "css": {
+      "useBundled": true,
+      "bundlePath": "./css/bundle.min.css",
+      "fallbackPaths": [
+        "./css/tailwind.min.css",
+        "./css/style.min.css",
+        "./css/adaptive-ui.min.css"
+      ]
+    },
+    "fonts": {
+      "useLocal": true,
+      "localPath": "./css/fonts.css",
+      "fallbackCDN": "https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+    },
+    "icons": {
+      "useLocal": true,
+      "localPath": "./css/font-awesome.min.css",
+      "fallbackCDN": "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"
+    }
+  },
+  "optimization": {
+    "minifyCSS": true,
+    "bundleResources": true,
+    "enableCaching": true,
+    "compressionLevel": "high",
+    "preloadCriticalResources": true,
+    "lazyLoadNonCritical": true
+  },
+  "performance": {
+    "maxLoadTime": 3000,
+    "enablePerformanceMonitoring": true,
+    "reportSlowLoading": true
+  },
+  "fallback": {
+    "enableGracefulDegradation": true,
+    "fallbackStyles": true,
+    "cdnFallback": true
+  }
+}
