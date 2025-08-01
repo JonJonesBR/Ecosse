@@ -448,6 +448,11 @@ function initializeApp() {
         console.log('🧪 Adaptive UI tests loaded: Run testAdaptiveUI(), testTouchControls(), testViewportChanges(), or getAdaptiveUIMetrics() in console');
     });
     
+    // Load Enhanced Responsive Layout tests
+    import('./test-enhanced-responsive-layout.js').then(() => {
+        console.log('🧪 Enhanced Responsive Layout tests loaded: Run testEnhancedResponsiveLayout() or getEnhancedResponsiveLayoutMetrics() in console');
+    });
+    
     // Load DOM fix tests
     import('./test-dom-fixes.js').then(() => {
         console.log('🧪 DOM fix tests loaded: Run testDOMFixes(), testSpecificErrorScenarios(), or validateDOMFixes() in console');
@@ -461,6 +466,16 @@ function initializeApp() {
     // Load Performance Optimization verification
     import('./verify-performance-optimization.js').then(() => {
         console.log('🔍 Performance Optimization verification loaded: Run verifyPerformanceOptimization() in console');
+    });
+    
+    // Load Layout Performance Optimization tests
+    import('./test-layout-performance-optimization.js').then(() => {
+        console.log('🧪 Layout Performance Optimization tests loaded: Run testLayoutPerformanceOptimization() in console');
+    });
+    
+    // Load Layout Performance Optimization verification
+    import('./verify-layout-performance-optimization.js').then(() => {
+        console.log('🔍 Layout Performance Optimization verification loaded: Run verifyLayoutPerformanceOptimization() in console');
     });
     
     // Add helper function for testing special events

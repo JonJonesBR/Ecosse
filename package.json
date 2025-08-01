@@ -6,6 +6,8 @@
   "scripts": {
     "build": "node build-production.js",
     "build:css": "node build-production.js",
+    "build:tailwind": "npx tailwindcss -i css/tailwind-src.css -o css/tailwind.min.css --minify",
+    "build:tailwind:watch": "npx tailwindcss -i css/tailwind-src.css -o css/tailwind.min.css --minify --watch",
     "serve": "python -m http.server 8000",
     "dev": "python -m http.server 8000"
   },
@@ -18,6 +20,8 @@
   ],
   "author": "Ecosse Team",
   "license": "MIT",
-  "devDependencies": {},
-  "dependencies": {}
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.11",
+    "tailwindcss": "^4.1.11"
+  }
 }

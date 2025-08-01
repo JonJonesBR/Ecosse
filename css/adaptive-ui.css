@@ -27,16 +27,18 @@
     --element-grid-gap: 12px;
 }
 
-/* Panel behavior styles */
+/* Enhanced Panel behavior styles */
 .panel-overlay {
     position: fixed !important;
     top: 0;
     left: 0;
     height: 100vh;
-    z-index: 50;
+    z-index: 1000;
     transform: translateX(-100%);
-    transition: transform 0.3s ease-in-out;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.3);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    border-right: 1px solid rgba(59, 130, 246, 0.2);
 }
 
 .panel-overlay.active {
@@ -47,25 +49,108 @@
     left: auto;
     right: 0;
     transform: translateX(100%);
+    border-right: none;
+    border-left: 1px solid rgba(59, 130, 246, 0.2);
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
 }
 
 .panel-overlay#right-panel.active {
     transform: translateX(0);
 }
 
+/* Enhanced collapsible panels for tablet */
 .panel-collapsible {
     position: relative;
-    transition: width 0.3s ease-in-out;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: visible;
 }
 
 .panel-collapsible.collapsed {
     width: 60px !important;
-    overflow: hidden;
+}
+
+.panel-collapsible.collapsed .panel-content {
+    opacity: 0;
+    transform: translateX(-20px);
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+.panel-collapsible.hover-expanded .panel-content {
+    opacity: 1;
+    transform: translateX(0);
+    pointer-events: auto;
+}
+
+/* Enhanced fixed panels for desktop */
+.panel-fixed {
+    position: relative;
+    flex-shrink: 0;
+    height: 100vh;
+    transition: all 0.3s ease;
+}
+
+.panel-fixed:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.6);
+    border-color: rgba(59, 130, 246, 0.3);
 }
 
 .panel-inline {
     position: relative;
     flex-shrink: 0;
+}
+
+/* Panel collapse toggle button */
+.panel-collapse-toggle {
+    position: absolute;
+    top: 50%;
+    right: -15px;
+    transform: translateY(-50%);
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(37, 99, 235, 0.8));
+    border: none;
+    color: white;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.panel-collapse-toggle:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(37, 99, 235, 0.9));
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.panel-collapse-toggle i {
+    font-size: 12px;
+    transition: transform 0.2s ease;
+}
+
+/* Right panel collapse toggle positioning */
+#right-panel .panel-collapse-toggle {
+    right: auto;
+    left: -15px;
+}
+
+/* Panel overlay backdrop */
+.panel-overlay-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 999;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    backdrop-filter: blur(2px);
 }
 
 /* Bottom panel positioning */
@@ -186,7 +271,7 @@
     margin-right: var(--panel-width);
 }
 
-/* Mobile-specific overrides */
+/* Enhanced Mobile-specific overrides */
 @media (max-width: 768px) {
     .main-content.left-panel-open,
     .main-content.right-panel-open,
@@ -195,74 +280,170 @@
         margin-right: 0;
     }
     
-    /* Mobile panel overlay backdrop */
-    .panel-overlay.active::after {
-        content: '';
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.5);
-        z-index: -1;
+    /* Enhanced mobile panel overlay styles */
+    .viewport-mobile .panel-overlay {
+        width: 85vw !important;
+        max-width: 320px;
+        border-radius: 0 1rem 1rem 0;
+        animation: slideInFromLeft 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* Mobile bottom panel adjustments */
-    .position-fixed-bottom {
+    .viewport-mobile .panel-overlay#right-panel {
+        border-radius: 1rem 0 0 1rem;
+        animation: slideInFromRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    @keyframes slideInFromLeft {
+        from {
+            transform: translateX(-100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    @keyframes slideInFromRight {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+    
+    /* Mobile-optimized panel content */
+    .viewport-mobile .panel-content {
+        padding: 1rem 0.75rem;
+        font-size: 0.9rem;
+    }
+    
+    .viewport-mobile .panel h3 {
+        font-size: 1.1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    /* Enhanced mobile bottom panel */
+    .viewport-mobile .position-fixed-bottom {
         padding: 12px;
         max-height: 50vh;
         overflow-y: auto;
+        border-radius: 1rem 1rem 0 0;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+        backdrop-filter: blur(12px);
     }
     
-    .position-fixed-bottom .element-categories {
+    .viewport-mobile .position-fixed-bottom .element-categories {
         margin-bottom: 1rem;
     }
     
-    .position-fixed-bottom .element-category h4 {
+    .viewport-mobile .position-fixed-bottom .element-category h4 {
         font-size: 0.9rem;
         margin-bottom: 0.5rem;
+        color: #3b82f6;
     }
     
-    /* Mobile element grid */
+    /* Enhanced mobile element grid */
     .viewport-mobile .element-grid {
         grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
         gap: 8px;
     }
     
     .viewport-mobile .element-item {
-        padding: 8px 6px;
+        padding: 10px 6px;
         font-size: 0.8rem;
         text-align: center;
+        min-height: 44px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        transition: all 0.2s ease;
     }
     
-    /* Mobile simulation controls */
+    .viewport-mobile .element-item:active {
+        transform: scale(0.95);
+        background: rgba(59, 130, 246, 0.3);
+    }
+    
+    /* Enhanced mobile simulation controls */
     .viewport-mobile #simulation-controls {
         flex-wrap: wrap;
         gap: 8px;
+        justify-content: center;
     }
     
     .viewport-mobile #simulation-controls .btn,
     .viewport-mobile #simulation-controls .control-btn {
         flex: 1 1 calc(50% - 4px);
         min-width: 120px;
+        min-height: 44px;
         font-size: 0.85rem;
+        padding: 8px 12px;
+        border-radius: 8px;
     }
     
-    /* Mobile multiplier buttons */
+    /* Enhanced mobile multiplier buttons */
     .viewport-mobile .multiplier-buttons {
         gap: 8px;
         margin-bottom: 1rem;
+        display: flex;
+        justify-content: center;
     }
     
     .viewport-mobile .multiplier-btn {
         flex: 1;
-        padding: 10px;
+        padding: 12px;
         font-size: 1rem;
         min-height: 44px;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    
+    .viewport-mobile .multiplier-btn:active {
+        transform: scale(0.95);
+    }
+    
+    /* Mobile panel toggle buttons */
+    .viewport-mobile .panel-toggle-btn {
+        min-width: 44px;
+        min-height: 44px;
+        padding: 12px;
+        font-size: 1.2rem;
+    }
+    
+    /* Mobile-specific swipe indicators */
+    .viewport-mobile .panel-overlay::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: -3px;
+        width: 3px;
+        height: 40px;
+        background: rgba(59, 130, 246, 0.6);
+        border-radius: 0 3px 3px 0;
+        transform: translateY(-50%);
+        opacity: 0.7;
+    }
+    
+    .viewport-mobile .panel-overlay#right-panel::before {
+        right: auto;
+        left: -3px;
+        border-radius: 3px 0 0 3px;
+    }
+    
+    /* Mobile accessibility improvements */
+    .viewport-mobile .touch-friendly:focus {
+        outline: 3px solid rgba(59, 130, 246, 0.6);
+        outline-offset: 2px;
     }
 }
 
-/* Tablet-specific styles */
+/* Enhanced Tablet-specific styles */
 @media (min-width: 769px) and (max-width: 1024px) {
     .viewport-tablet .element-grid {
         grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
@@ -272,25 +453,101 @@
     .viewport-tablet .element-item {
         padding: 10px 8px;
         font-size: 0.9rem;
+        min-height: 40px;
+        border-radius: 6px;
+        transition: all 0.2s ease;
+    }
+    
+    .viewport-tablet .element-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
     
     .viewport-tablet #simulation-controls .btn,
     .viewport-tablet #simulation-controls .control-btn {
         font-size: 0.9rem;
         padding: 8px 12px;
+        min-height: 40px;
     }
     
-    /* Tablet panel behavior */
+    /* Enhanced tablet panel behavior */
     .viewport-tablet .panel-collapsible {
         width: 320px;
+        position: relative;
+        border-radius: 0 1rem 1rem 0;
+        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.3);
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .viewport-tablet .panel-collapsible#right-panel {
+        border-radius: 1rem 0 0 1rem;
+        box-shadow: -2px 0 15px rgba(0, 0, 0, 0.3);
     }
     
     .viewport-tablet .panel-collapsible.collapsed {
         width: 60px;
+        border-radius: 0 0.5rem 0.5rem 0;
+    }
+    
+    .viewport-tablet .panel-collapsible.collapsed#right-panel {
+        border-radius: 0.5rem 0 0 0.5rem;
+    }
+    
+    /* Tablet hover expansion effects */
+    .viewport-tablet .panel-collapsible.collapsed:hover {
+        width: 320px;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.4);
+        z-index: 100;
+    }
+    
+    .viewport-tablet .panel-collapsible.collapsed#right-panel:hover {
+        box-shadow: -4px 0 20px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Tablet collapse toggle enhancements */
+    .viewport-tablet .panel-collapse-toggle {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.8), rgba(37, 99, 235, 0.7));
+        backdrop-filter: blur(4px);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+    
+    .viewport-tablet .panel-collapse-toggle:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 1), rgba(37, 99, 235, 0.9));
+        border-color: rgba(59, 130, 246, 0.6);
+    }
+    
+    /* Tablet main content adjustments */
+    .viewport-tablet #main-content {
+        transition: margin 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Tablet bottom panel optimizations */
+    .viewport-tablet #bottom-panel {
+        max-width: min(85vw, 900px);
+        max-height: 60vh;
+        border-radius: 1.25rem;
+    }
+    
+    /* Tablet-specific animations */
+    .viewport-tablet .panel-collapsible .panel-content {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .viewport-tablet .panel-collapsible.collapsed .panel-content {
+        opacity: 0;
+        transform: translateX(-20px);
+        pointer-events: none;
+    }
+    
+    .viewport-tablet .panel-collapsible.hover-expanded .panel-content,
+    .viewport-tablet .panel-collapsible:not(.collapsed) .panel-content {
+        opacity: 1;
+        transform: translateX(0);
+        pointer-events: auto;
     }
 }
 
-/* Desktop-specific styles */
+/* Enhanced Desktop-specific styles */
 @media (min-width: 1025px) {
     .viewport-desktop .element-grid {
         grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -300,17 +557,149 @@
     .viewport-desktop .element-item {
         padding: 12px 10px;
         font-size: 1rem;
+        border-radius: 8px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
-    /* Desktop hover effects */
+    /* Enhanced desktop hover effects */
     .viewport-desktop .element-item:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+        border-color: rgba(59, 130, 246, 0.4);
     }
     
     .viewport-desktop .btn:hover,
     .viewport-desktop .control-btn:hover {
         transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Enhanced desktop fixed panels */
+    .viewport-desktop .panel-fixed {
+        width: 280px;
+        position: relative;
+        flex-shrink: 0;
+        height: 100vh;
+        border-radius: 0 1rem 1rem 0;
+        box-shadow: 2px 0 15px rgba(0, 0, 0, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .viewport-desktop .panel-fixed#right-panel {
+        border-radius: 1rem 0 0 1rem;
+        box-shadow: -2px 0 15px rgba(0, 0, 0, 0.3);
+    }
+    
+    .viewport-desktop .panel-fixed:hover {
+        box-shadow: 4px 0 25px rgba(0, 0, 0, 0.4);
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+    
+    .viewport-desktop .panel-fixed#right-panel:hover {
+        box-shadow: -4px 0 25px rgba(0, 0, 0, 0.4);
+    }
+    
+    /* Desktop main content optimization */
+    .viewport-desktop #main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        min-height: 0;
+    }
+    
+    /* Desktop canvas maximization */
+    .viewport-desktop #three-js-canvas-container {
+        flex: 1;
+        min-height: 300px;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Desktop bottom panel enhancements */
+    .viewport-desktop #bottom-panel {
+        max-width: min(90vw, 1200px);
+        max-height: 65vh;
+        border-radius: 1.5rem;
+        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+    }
+    
+    .viewport-desktop #bottom-panel:hover {
+        transform: translateX(-50%) translateY(-6px) scale(1.02);
+        box-shadow: 0 35px 70px rgba(0, 0, 0, 0.6);
+    }
+    
+    /* Desktop advanced controls */
+    .viewport-desktop .advanced-control {
+        display: block;
+        opacity: 1;
+        transition: all 0.2s ease;
+    }
+    
+    .viewport-desktop .advanced-control:hover {
+        transform: scale(1.05);
+    }
+    
+    /* Desktop keyboard navigation indicators */
+    .viewport-desktop .panel-fixed::after {
+        content: '';
+        position: absolute;
+        top: 1rem;
+        right: 1rem;
+        width: 8px;
+        height: 8px;
+        background: #10b981;
+        border-radius: 50%;
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.5);
+        animation: desktopPulse 2s ease-in-out infinite;
+    }
+    
+    @keyframes desktopPulse {
+        0%, 100% {
+            opacity: 0.7;
+            transform: scale(1);
+        }
+        50% {
+            opacity: 1;
+            transform: scale(1.2);
+        }
+    }
+    
+    /* Desktop panel content enhancements */
+    .viewport-desktop .panel-content {
+        padding: 1.25rem;
+        height: calc(100vh - 2.5rem);
+        overflow-y: auto;
+    }
+    
+    .viewport-desktop .panel-content::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .viewport-desktop .panel-content::-webkit-scrollbar-track {
+        background: rgba(30, 41, 59, 0.5);
+        border-radius: 4px;
+    }
+    
+    .viewport-desktop .panel-content::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.6), rgba(147, 51, 234, 0.6));
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+    
+    .viewport-desktop .panel-content::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, rgba(59, 130, 246, 0.8), rgba(147, 51, 234, 0.8));
+    }
+    
+    /* Desktop performance optimizations */
+    .viewport-desktop * {
+        will-change: auto;
+    }
+    
+    .viewport-desktop .panel-fixed,
+    .viewport-desktop #bottom-panel {
+        will-change: transform, box-shadow;
     }
 }
 

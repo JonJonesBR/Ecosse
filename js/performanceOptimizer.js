@@ -1,12 +1,16 @@
 /**
- * Performance Optimizer - Task 6: Implement performance optimization fixes
+ * Performance Optimizer - Task 6 & 7: Implement comprehensive performance optimization
  * 
  * Requirements addressed:
  * - 5.1: Fix debounced resize events to properly limit layout updates
  * - 5.2: Implement proper lazy loading with correct element observation
  * - 5.3: Add infinite loop detection and prevention system
  * - 5.4: Optimize layout calculation caching and performance monitoring
+ * - 2.3: Canvas SHALL adjust automatically when screen is resized (Task 7)
+ * - 4.4: Layout SHALL reorganize adequately when orientation changes (Task 7)
  */
+
+import { layoutPerformanceOptimizer } from './systems/layoutPerformanceOptimizer.js';
 
 class PerformanceOptimizer {
     constructor() {
@@ -15,12 +19,14 @@ class PerformanceOptimizer {
         this.layoutCache = new Map();
         this.intersectionObserver = null;
         this.lazyElements = new Set();
+        this.layoutPerformanceOptimizer = layoutPerformanceOptimizer;
         this.metrics = {
             resizeEvents: 0,
             cacheHits: 0,
             cacheMisses: 0,
             lazyLoads: 0,
-            infiniteLoopsDetected: 0
+            infiniteLoopsDetected: 0,
+            layoutOptimizations: 0
         };
     }
     
@@ -29,30 +35,28 @@ class PerformanceOptimizer {
         
         console.log('🚀 Initializing Performance Optimizer...');
         
+        // Initialize layout performance optimizer first (Task 7)
+        this.layoutPerformanceOptimizer.initialize();
+        this.metrics.layoutOptimizations++;
+        
         this.setupDebouncedResize();
         this.setupLazyLoading();
         this.setupInfiniteLoopDetection();
         this.setupLayoutCaching();
+        this.setupDOMBatchingIntegration();
         
         this.isInitialized = true;
-        console.log('✅ Performance Optimizer initialized');
+        console.log('✅ Performance Optimizer initialized with layout optimizations');
     }
     
     setupDebouncedResize() {
-        const debouncedHandler = () => {
+        // Register with the layout performance optimizer for enhanced resize handling
+        this.layoutPerformanceOptimizer.registerResizeHandler('performanceOptimizer', () => {
             this.metrics.resizeEvents++;
-            
-            if (this.resizeTimeout) {
-                clearTimeout(this.resizeTimeout);
-            }
-            
-            this.resizeTimeout = setTimeout(() => {
-                this.handleResize();
-            }, 100);
-        };
+            this.handleResize();
+        });
         
-        window.addEventListener('resize', debouncedHandler, { passive: true });
-        console.log('✅ Debounced resize configured');
+        console.log('✅ Enhanced debounced resize configured via layout performance optimizer');
     }
     
     handleResize() {
@@ -190,15 +194,9 @@ class PerformanceOptimizer {
     }
     
     setupLayoutCaching() {
-        const checkLayoutManager = () => {
-            if (window.layoutManager) {
-                this.wrapLayoutManager();
-            } else {
-                setTimeout(checkLayoutManager, 100);
-            }
-        };
-        checkLayoutManager();
-        console.log('✅ Layout caching configured');
+        // Layout caching is now handled by the layout performance optimizer
+        // This method maintains compatibility with existing code
+        console.log('✅ Layout caching delegated to layout performance optimizer');
     }
     
     wrapLayoutManager() {
@@ -243,12 +241,41 @@ class PerformanceOptimizer {
         }
     }
     
+    /**
+     * Set up DOM batching integration (Task 7)
+     */
+    setupDOMBatchingIntegration() {
+        // Make DOM batching available to existing systems
+        if (typeof window !== 'undefined') {
+            // Provide backward compatibility wrapper
+            window.optimizeDOMOperation = (operation, priority = 'normal') => {
+                if (window.batchDOMOperation) {
+                    window.batchDOMOperation(operation, priority);
+                } else {
+                    // Fallback to immediate execution
+                    operation();
+                }
+            };
+        }
+        
+        console.log('✅ DOM batching integration configured');
+    }
+
     getMetrics() {
+        const layoutMetrics = this.layoutPerformanceOptimizer.getPerformanceMetrics();
+        
         return {
             ...this.metrics,
             cacheSize: this.layoutCache.size,
             lazyElementsObserved: this.lazyElements.size,
-            cacheEfficiency: this.getCacheEfficiency()
+            cacheEfficiency: this.getCacheEfficiency(),
+            layoutOptimizations: {
+                cacheHits: layoutMetrics.cacheHits,
+                cacheMisses: layoutMetrics.cacheMisses,
+                cacheEfficiency: layoutMetrics.cacheEfficiency,
+                domBatches: layoutMetrics.domBatches,
+                averageLayoutTime: layoutMetrics.averageLayoutTime
+            }
         };
     }
     
@@ -259,11 +286,63 @@ class PerformanceOptimizer {
     
     generateReport() {
         const metrics = this.getMetrics();
+        const layoutDebugInfo = this.layoutPerformanceOptimizer.getDebugInfo();
+        
         return {
             timestamp: new Date().toISOString(),
             metrics,
-            status: metrics.cacheEfficiency > 70 ? 'good' : 'needs improvement'
+            layoutOptimizations: layoutDebugInfo,
+            status: this.getOverallPerformanceStatus(metrics, layoutDebugInfo),
+            recommendations: this.getPerformanceRecommendations(metrics, layoutDebugInfo)
         };
+    }
+    
+    /**
+     * Get overall performance status
+     */
+    getOverallPerformanceStatus(metrics, layoutDebugInfo) {
+        const cacheEfficiency = metrics.cacheEfficiency || 0;
+        const layoutCacheEfficiency = layoutDebugInfo.cache?.hitRate || 0;
+        const averageLayoutTime = layoutDebugInfo.metrics?.averageLayoutTime || 0;
+        
+        if (cacheEfficiency > 80 && layoutCacheEfficiency > 70 && averageLayoutTime < 16) {
+            return 'excellent';
+        } else if (cacheEfficiency > 60 && layoutCacheEfficiency > 50 && averageLayoutTime < 32) {
+            return 'good';
+        } else if (cacheEfficiency > 40 && layoutCacheEfficiency > 30 && averageLayoutTime < 50) {
+            return 'fair';
+        } else {
+            return 'needs improvement';
+        }
+    }
+    
+    /**
+     * Get performance recommendations
+     */
+    getPerformanceRecommendations(metrics, layoutDebugInfo) {
+        const recommendations = [];
+        
+        if (metrics.cacheEfficiency < 50) {
+            recommendations.push('Consider increasing cache size or improving cache key generation');
+        }
+        
+        if (layoutDebugInfo.cache?.hitRate < 50) {
+            recommendations.push('Layout cache efficiency is low - check for frequent layout invalidations');
+        }
+        
+        if (layoutDebugInfo.metrics?.averageLayoutTime > 32) {
+            recommendations.push('Layout calculations are slow - consider optimizing DOM operations');
+        }
+        
+        if (layoutDebugInfo.batching?.queueSize > 20) {
+            recommendations.push('DOM batch queue is large - consider increasing flush frequency');
+        }
+        
+        if (metrics.infiniteLoopsDetected > 0) {
+            recommendations.push('Infinite loops detected - review event handlers and timers');
+        }
+        
+        return recommendations;
     }
 }
 

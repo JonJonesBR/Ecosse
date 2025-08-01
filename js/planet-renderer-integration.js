@@ -8,6 +8,7 @@ import { applyPlanetRendererFixes, updatePlanetAppearance as fixedUpdatePlanetAp
 import { init3DScene as originalInit3DScene, updatePlanetAppearance as originalUpdatePlanetAppearance, resetCamera as originalResetCamera } from './planetRenderer.js';
 import { responsiveCanvasContainer } from './responsive-canvas-container.js';
 import { rendererLayoutIntegration } from './ui/rendererLayoutIntegration.js';
+import { canvasSizingIntegration } from './systems/canvasSizingIntegration.js';
 
 // Flag to determine which system to use
 let useFixes = true;
@@ -46,6 +47,19 @@ export function enhancedInit3DScene(container, initialConfig) {
                                 console.warn('⚠️ Responsive canvas container initialization failed');
                             }
                             
+                            // Initialize canvas sizing integration (Task 5)
+                            const canvasSizingSuccess = canvasSizingIntegration.initialize(
+                                renderingComponents,
+                                container,
+                                document.getElementById('top-panel')
+                            );
+                            
+                            if (canvasSizingSuccess) {
+                                console.log('✅ Canvas sizing integration initialized');
+                            } else {
+                                console.warn('⚠️ Canvas sizing integration initialization failed');
+                            }
+                            
                             // Initialize renderer layout integration
                             const integrationSuccess = rendererLayoutIntegration.initialize(
                                 renderingComponents, 
@@ -59,6 +73,11 @@ export function enhancedInit3DScene(container, initialConfig) {
                                 container.addEventListener('canvasResize', (event) => {
                                     console.log(`Canvas resized to ${event.detail.width}x${event.detail.height}`);
                                     // The renderer layout integration handles the rest
+                                });
+                                
+                                // Set up canvas sizing optimization event listener
+                                container.addEventListener('canvasSizeOptimized', (event) => {
+                                    console.log(`Canvas size optimized: ${event.detail.width}x${event.detail.height} (top panel: ${event.detail.topPanelHeight}px)`);
                                 });
                                 
                             } else {

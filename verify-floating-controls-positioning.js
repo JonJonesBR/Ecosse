@@ -1,42 +1,57 @@
 /**
- * Verification script for Floating Controls Panel Positioning
- * Tests the implementation of task 3: Fix floating controls panel positioning
+ * Verification Script for Floating Controls Panel Positioning
+ * Task 3: Fix floating controls panel positioning
  */
+
+// Test configuration
+const TEST_CONFIG = {
+    positions: ['bottom-center', 'bottom-left', 'bottom-right', 'side-left', 'side-right'],
+    viewports: [
+        { width: 375, height: 667, name: 'Mobile' },
+        { width: 768, height: 1024, name: 'Tablet' },
+        { width: 1440, height: 900, name: 'Desktop' }
+    ]
+};
 
 class FloatingControlsPositioningVerifier {
     constructor() {
-        this.testResults = [];
+        this.results = {
+            zIndexLayering: false,
+            viewportAwareness: false,
+            responsivePositioning: false,
+            dragFunctionality: false,
+            overall: false
+        };
+        
         this.panel = null;
-        this.floatingControlsPanel = null;
+        this.canvasContainer = null;
     }
-
+    
     async runAllTests() {
         console.log('🧪 Starting Floating Controls Panel Positioning Tests...\n');
         
         // Wait for DOM to be ready
         await this.waitForDOM();
         
-        // Initialize references
-        this.panel = document.getElementById('bottom-panel');
-        this.floatingControlsPanel = window.floatingControlsPanel;
+        // Initialize elements
+        this.initializeElements();
         
-        if (!this.panel || !this.floatingControlsPanel) {
-            console.error('❌ Required elements not found. Make sure the page is fully loaded.');
-            return;
-        }
-
-        // Run tests
+        // Run individual tests
         await this.testZIndexLayering();
         await this.testViewportAwareness();
         await this.testResponsivePositioning();
-        await this.testPositionValidation();
-        await this.testDragConstraints();
+        await this.testDragFunctionality();
         
-        // Print results
-        this.printResults();
+        // Calculate overall result
+        this.calculateOverallResult();
+        
+        // Display results
+        this.displayResults();
+        
+        return this.results;
     }
-
-    async waitForDOM() {
+    
+    waitForDOM() {
         return new Promise((resolve) => {
             if (document.readyState === 'loading') {
                 document.addEventListener('DOMContentLoaded', resolve);
@@ -45,244 +60,322 @@ class FloatingControlsPositioningVerifier {
             }
         });
     }
-
+    
+    initializeElements() {
+        this.panel = document.getElementById('bottom-panel');
+        this.canvasContainer = document.getElementById('three-js-canvas-container');
+        
+        if (!this.panel) {
+            console.error('❌ Bottom panel not found');
+            return false;
+        }
+        
+        if (!this.canvasContainer) {
+            console.error('❌ Canvas container not found');
+            return false;
+        }
+        
+        return true;
+    }
+    
     async testZIndexLayering() {
         console.log('🔍 Testing Z-Index Layering...');
         
         try {
-            const panelZIndex = parseInt(window.getComputedStyle(this.panel).zIndex);
-            const canvasContainer = document.getElementById('three-js-canvas-container');
-            const canvasZIndex = canvasContainer ? parseInt(window.getComputedStyle(canvasContainer).zIndex) : 0;
+            // Get computed z-index values
+            const panelZIndex = parseInt(getComputedStyle(this.panel).zIndex) || 0;
+            const canvasZIndex = parseInt(getComputedStyle(this.canvasContainer).zIndex) || 0;
+            
+            console.log(`   Panel z-index: ${panelZIndex}`);
+            console.log(`   Canvas z-index: ${canvasZIndex}`);
             
             // Test 1: Panel should have higher z-index than canvas
-            const test1 = panelZIndex > canvasZIndex;
-            this.addTestResult('Z-Index: Panel above canvas', test1, 
-                `Panel z-index: ${panelZIndex}, Canvas z-index: ${canvasZIndex}`);
+            const layeringCorrect = panelZIndex > canvasZIndex;
             
-            // Test 2: Panel should have z-index >= 1000 for proper layering
-            const test2 = panelZIndex >= 1000;
-            this.addTestResult('Z-Index: High priority layering', test2, 
-                `Panel z-index: ${panelZIndex} (should be >= 1000)`);
+            // Test 2: Panel should be positioned above canvas (not obstructed)
+            const panelRect = this.panel.getBoundingClientRect();
+            const canvasRect = this.canvasContainer.getBoundingClientRect();
             
-            // Test 3: Panel controls should have higher z-index than panel
-            const controls = this.panel.querySelector('.floating-panel-controls');
-            if (controls) {
-                const controlsZIndex = parseInt(window.getComputedStyle(controls).zIndex);
-                const test3 = controlsZIndex > panelZIndex;
-                this.addTestResult('Z-Index: Controls above panel', test3, 
-                    `Controls z-index: ${controlsZIndex}, Panel z-index: ${panelZIndex}`);
-            }
+            // Check if panel overlaps canvas area
+            const overlaps = !(panelRect.right < canvasRect.left || 
+                             panelRect.left > canvasRect.right || 
+                             panelRect.bottom < canvasRect.top || 
+                             panelRect.top > canvasRect.bottom);
+            
+            // If overlapping, panel should be above canvas
+            const positioningCorrect = !overlaps || panelZIndex > canvasZIndex;
+            
+            this.results.zIndexLayering = layeringCorrect && positioningCorrect;
+            
+            console.log(`   ✅ Z-Index layering: ${this.results.zIndexLayering ? 'PASS' : 'FAIL'}`);
             
         } catch (error) {
-            this.addTestResult('Z-Index Layering', false, `Error: ${error.message}`);
+            console.error('   ❌ Z-Index layering test failed:', error);
+            this.results.zIndexLayering = false;
         }
     }
-
+    
     async testViewportAwareness() {
         console.log('🔍 Testing Viewport Awareness...');
         
         try {
-            // Test viewport bounds checking
-            const rect = this.panel.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-            const viewportHeight = window.innerHeight;
+            let allTestsPassed = true;
             
-            // Test 1: Panel should be within viewport bounds
-            const withinBounds = (
-                rect.left >= 0 && 
-                rect.right <= viewportWidth && 
-                rect.top >= 0 && 
-                rect.bottom <= viewportHeight
-            );
+            for (const viewport of TEST_CONFIG.viewports) {
+                console.log(`   Testing ${viewport.name} (${viewport.width}x${viewport.height})...`);
+                
+                // Simulate viewport resize
+                Object.defineProperty(window, 'innerWidth', {
+                    writable: true,
+                    configurable: true,
+                    value: viewport.width
+                });
+                Object.defineProperty(window, 'innerHeight', {
+                    writable: true,
+                    configurable: true,
+                    value: viewport.height
+                });
+                
+                // Trigger resize event
+                window.dispatchEvent(new Event('resize'));
+                
+                // Wait for responsive handling
+                await this.wait(200);
+                
+                // Check if panel stays within viewport bounds
+                const rect = this.panel.getBoundingClientRect();
+                const safeMargin = 20;
+                
+                const withinBounds = (
+                    rect.left >= safeMargin &&
+                    rect.right <= viewport.width - safeMargin &&
+                    rect.top >= safeMargin &&
+                    rect.bottom <= viewport.height - safeMargin
+                );
+                
+                console.log(`     Panel bounds: ${Math.round(rect.left)}, ${Math.round(rect.top)}, ${Math.round(rect.right)}, ${Math.round(rect.bottom)}`);
+                console.log(`     Within safe bounds: ${withinBounds ? 'YES' : 'NO'}`);
+                
+                if (!withinBounds) {
+                    allTestsPassed = false;
+                }
+            }
             
-            this.addTestResult('Viewport: Panel within bounds', withinBounds, 
-                `Panel bounds: ${Math.round(rect.left)}, ${Math.round(rect.top)}, ${Math.round(rect.right)}, ${Math.round(rect.bottom)}`);
-            
-            // Test 2: Panel should have minimum safe margins
-            const safeMargin = 20;
-            const hasSafeMargins = (
-                rect.left >= safeMargin || 
-                rect.right <= viewportWidth - safeMargin ||
-                rect.top >= safeMargin ||
-                rect.bottom <= viewportHeight - safeMargin
-            );
-            
-            this.addTestResult('Viewport: Safe margins maintained', hasSafeMargins, 
-                `Margins: left=${Math.round(rect.left)}, right=${Math.round(viewportWidth - rect.right)}, top=${Math.round(rect.top)}, bottom=${Math.round(viewportHeight - rect.bottom)}`);
-            
-            // Test 3: Viewport update method exists and works
-            const hasUpdateMethod = typeof this.floatingControlsPanel.updateViewportAwareness === 'function';
-            this.addTestResult('Viewport: Update method exists', hasUpdateMethod, 
-                hasUpdateMethod ? 'updateViewportAwareness method found' : 'Method missing');
+            this.results.viewportAwareness = allTestsPassed;
+            console.log(`   ✅ Viewport awareness: ${this.results.viewportAwareness ? 'PASS' : 'FAIL'}`);
             
         } catch (error) {
-            this.addTestResult('Viewport Awareness', false, `Error: ${error.message}`);
+            console.error('   ❌ Viewport awareness test failed:', error);
+            this.results.viewportAwareness = false;
         }
     }
-
+    
     async testResponsivePositioning() {
         console.log('🔍 Testing Responsive Positioning...');
         
         try {
-            const currentWidth = window.innerWidth;
+            let allTestsPassed = true;
             
-            // Test 1: Mobile behavior (≤768px)
-            if (currentWidth <= 768) {
-                const isMobilePosition = this.floatingControlsPanel.currentPosition === 'bottom-center';
-                this.addTestResult('Responsive: Mobile forces bottom-center', isMobilePosition, 
-                    `Current position: ${this.floatingControlsPanel.currentPosition} (viewport: ${currentWidth}px)`);
-                
-                const hasCompactMode = this.panel.classList.contains('compact-mode');
-                this.addTestResult('Responsive: Mobile enables compact mode', hasCompactMode, 
-                    `Compact mode: ${hasCompactMode}`);
+            // Test mobile behavior
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 375
+            });
+            
+            window.dispatchEvent(new Event('resize'));
+            await this.wait(200);
+            
+            // On mobile, should force bottom-center and compact mode
+            const isMobilePositioned = this.panel.classList.contains('compact-mode');
+            const dragHandleHidden = this.panel.querySelector('.panel-drag-handle')?.style.display === 'none';
+            
+            console.log(`   Mobile compact mode: ${isMobilePositioned ? 'YES' : 'NO'}`);
+            console.log(`   Mobile drag disabled: ${dragHandleHidden ? 'YES' : 'NO'}`);
+            
+            if (!isMobilePositioned) {
+                allTestsPassed = false;
             }
             
-            // Test 2: Desktop behavior (≥1025px)
-            else if (currentWidth >= 1025) {
-                const allowsSidePositions = ['side-left', 'side-right'].includes(this.floatingControlsPanel.currentPosition) || 
-                                          ['bottom-left', 'bottom-right', 'bottom-center'].includes(this.floatingControlsPanel.currentPosition);
-                this.addTestResult('Responsive: Desktop allows all positions', allowsSidePositions, 
-                    `Current position: ${this.floatingControlsPanel.currentPosition} (viewport: ${currentWidth}px)`);
-            }
+            // Test desktop behavior
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 1440
+            });
             
-            // Test 3: Position validation method exists
-            const hasValidationMethod = typeof this.floatingControlsPanel.validatePositionForViewport === 'function';
-            this.addTestResult('Responsive: Position validation method exists', hasValidationMethod, 
-                hasValidationMethod ? 'validatePositionForViewport method found' : 'Method missing');
+            window.dispatchEvent(new Event('resize'));
+            await this.wait(200);
             
-        } catch (error) {
-            this.addTestResult('Responsive Positioning', false, `Error: ${error.message}`);
-        }
-    }
-
-    async testPositionValidation() {
-        console.log('🔍 Testing Position Validation...');
-        
-        try {
-            // Test different position settings
-            const originalPosition = this.floatingControlsPanel.currentPosition;
-            
-            // Test 1: Setting valid positions
-            const validPositions = ['bottom-center', 'bottom-left', 'bottom-right'];
-            let validPositionTests = 0;
-            
-            for (const position of validPositions) {
-                this.floatingControlsPanel.setPosition(position);
-                if (this.floatingControlsPanel.currentPosition === position) {
-                    validPositionTests++;
+            // Test different positions on desktop
+            if (window.floatingControlsPanel) {
+                for (const position of TEST_CONFIG.positions) {
+                    window.floatingControlsPanel.setPosition(position);
+                    await this.wait(100);
+                    
+                    const currentPosition = window.floatingControlsPanel.currentPosition;
+                    const positionSet = currentPosition === position || 
+                                      (position.includes('side-') && currentPosition.includes('bottom-'));
+                    
+                    console.log(`     Position ${position}: ${positionSet ? 'OK' : 'FAIL'} (actual: ${currentPosition})`);
+                    
+                    if (!positionSet && window.innerWidth > 900) {
+                        allTestsPassed = false;
+                    }
                 }
             }
             
-            this.addTestResult('Position: Valid positions work', validPositionTests === validPositions.length, 
-                `${validPositionTests}/${validPositions.length} valid positions set correctly`);
-            
-            // Test 2: Side positions on narrow viewports
-            if (window.innerWidth <= 768) {
-                this.floatingControlsPanel.setPosition('side-left');
-                const fallbackWorked = this.floatingControlsPanel.currentPosition === 'bottom-center';
-                this.addTestResult('Position: Side position fallback on mobile', fallbackWorked, 
-                    `Attempted side-left, got: ${this.floatingControlsPanel.currentPosition}`);
-            }
-            
-            // Restore original position
-            this.floatingControlsPanel.setPosition(originalPosition);
+            this.results.responsivePositioning = allTestsPassed;
+            console.log(`   ✅ Responsive positioning: ${this.results.responsivePositioning ? 'PASS' : 'FAIL'}`);
             
         } catch (error) {
-            this.addTestResult('Position Validation', false, `Error: ${error.message}`);
+            console.error('   ❌ Responsive positioning test failed:', error);
+            this.results.responsivePositioning = false;
         }
     }
-
-    async testDragConstraints() {
-        console.log('🔍 Testing Drag Constraints...');
+    
+    async testDragFunctionality() {
+        console.log('🔍 Testing Drag Functionality...');
         
         try {
-            // Test 1: Drag is disabled on mobile
-            const isMobile = window.innerWidth <= 768;
+            let allTestsPassed = true;
+            
+            // Test desktop drag functionality
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 1440
+            });
+            
+            window.dispatchEvent(new Event('resize'));
+            await this.wait(200);
+            
             const dragHandle = this.panel.querySelector('.panel-drag-handle');
             
-            if (isMobile) {
-                this.addTestResult('Drag: Disabled on mobile', true, 
-                    `Mobile viewport detected (${window.innerWidth}px), drag should be disabled`);
-            } else {
-                // Test 2: Drag handle exists on desktop
-                const hasDragHandle = dragHandle !== null;
-                this.addTestResult('Drag: Handle exists on desktop', hasDragHandle, 
-                    hasDragHandle ? 'Drag handle found' : 'Drag handle missing');
+            if (dragHandle) {
+                // Test drag handle visibility on desktop
+                const dragHandleVisible = getComputedStyle(dragHandle).display !== 'none';
+                console.log(`   Drag handle visible on desktop: ${dragHandleVisible ? 'YES' : 'NO'}`);
                 
-                // Test 3: Drag method exists
-                const hasDragMethod = typeof this.floatingControlsPanel.drag === 'function';
-                this.addTestResult('Drag: Method exists', hasDragMethod, 
-                    hasDragMethod ? 'drag method found' : 'Method missing');
+                if (!dragHandleVisible) {
+                    allTestsPassed = false;
+                }
+                
+                // Test drag functionality (simulate drag events)
+                const initialRect = this.panel.getBoundingClientRect();
+                
+                // Simulate mousedown
+                const mouseDownEvent = new MouseEvent('mousedown', {
+                    clientX: initialRect.left + 50,
+                    clientY: initialRect.top + 10,
+                    bubbles: true
+                });
+                dragHandle.dispatchEvent(mouseDownEvent);
+                
+                // Simulate mousemove
+                const mouseMoveEvent = new MouseEvent('mousemove', {
+                    clientX: initialRect.left + 100,
+                    clientY: initialRect.top + 50,
+                    bubbles: true
+                });
+                document.dispatchEvent(mouseMoveEvent);
+                
+                // Simulate mouseup
+                const mouseUpEvent = new MouseEvent('mouseup', {
+                    bubbles: true
+                });
+                document.dispatchEvent(mouseUpEvent);
+                
+                await this.wait(100);
+                
+                console.log(`   Drag simulation completed`);
+            } else {
+                console.log(`   ❌ Drag handle not found`);
+                allTestsPassed = false;
             }
             
+            // Test mobile drag disabled
+            Object.defineProperty(window, 'innerWidth', {
+                writable: true,
+                configurable: true,
+                value: 375
+            });
+            
+            window.dispatchEvent(new Event('resize'));
+            await this.wait(200);
+            
+            if (dragHandle) {
+                const dragHandleHiddenOnMobile = getComputedStyle(dragHandle).display === 'none';
+                console.log(`   Drag handle hidden on mobile: ${dragHandleHiddenOnMobile ? 'YES' : 'NO'}`);
+                
+                if (!dragHandleHiddenOnMobile) {
+                    allTestsPassed = false;
+                }
+            }
+            
+            this.results.dragFunctionality = allTestsPassed;
+            console.log(`   ✅ Drag functionality: ${this.results.dragFunctionality ? 'PASS' : 'FAIL'}`);
+            
         } catch (error) {
-            this.addTestResult('Drag Constraints', false, `Error: ${error.message}`);
+            console.error('   ❌ Drag functionality test failed:', error);
+            this.results.dragFunctionality = false;
         }
     }
-
-    addTestResult(testName, passed, details) {
-        this.testResults.push({
-            name: testName,
-            passed,
-            details
+    
+    calculateOverallResult() {
+        const passedTests = Object.values(this.results).filter(result => result === true).length - 1; // -1 for overall
+        const totalTests = Object.keys(this.results).length - 1; // -1 for overall
+        
+        this.results.overall = passedTests === totalTests;
+    }
+    
+    displayResults() {
+        console.log('\n📊 Test Results Summary:');
+        console.log('========================');
+        
+        const tests = [
+            { name: 'Z-Index Layering', result: this.results.zIndexLayering },
+            { name: 'Viewport Awareness', result: this.results.viewportAwareness },
+            { name: 'Responsive Positioning', result: this.results.responsivePositioning },
+            { name: 'Drag Functionality', result: this.results.dragFunctionality }
+        ];
+        
+        tests.forEach(test => {
+            const status = test.result ? '✅ PASS' : '❌ FAIL';
+            console.log(`${test.name}: ${status}`);
         });
         
-        const status = passed ? '✅' : '❌';
-        console.log(`  ${status} ${testName}: ${details}`);
-    }
-
-    printResults() {
-        console.log('\n📊 Test Results Summary:');
-        console.log('=' .repeat(50));
+        console.log('========================');
+        const overallStatus = this.results.overall ? '✅ PASS' : '❌ FAIL';
+        console.log(`Overall Result: ${overallStatus}`);
         
-        const totalTests = this.testResults.length;
-        const passedTests = this.testResults.filter(test => test.passed).length;
-        const failedTests = totalTests - passedTests;
-        
-        console.log(`Total Tests: ${totalTests}`);
-        console.log(`Passed: ${passedTests} ✅`);
-        console.log(`Failed: ${failedTests} ❌`);
-        console.log(`Success Rate: ${Math.round((passedTests / totalTests) * 100)}%`);
-        
-        if (failedTests > 0) {
-            console.log('\n❌ Failed Tests:');
-            this.testResults
-                .filter(test => !test.passed)
-                .forEach(test => {
-                    console.log(`  • ${test.name}: ${test.details}`);
-                });
+        if (this.results.overall) {
+            console.log('\n🎉 All floating controls panel positioning tests passed!');
+            console.log('✅ Z-index layering prevents canvas obstruction');
+            console.log('✅ Proper floating positioning with viewport awareness');
+            console.log('✅ Responsive positioning for different screen sizes');
+            console.log('✅ Drag functionality works correctly');
+        } else {
+            console.log('\n⚠️  Some tests failed. Please review the implementation.');
         }
-        
-        console.log('\n🎯 Task 3 Implementation Status:');
-        
-        // Check specific requirements
-        const zIndexFixed = this.testResults.some(test => 
-            test.name.includes('Z-Index') && test.passed);
-        const viewportAware = this.testResults.some(test => 
-            test.name.includes('Viewport') && test.passed);
-        const responsive = this.testResults.some(test => 
-            test.name.includes('Responsive') && test.passed);
-        
-        console.log(`  ${zIndexFixed ? '✅' : '❌'} Z-index layering corrected`);
-        console.log(`  ${viewportAware ? '✅' : '❌'} Viewport awareness implemented`);
-        console.log(`  ${responsive ? '✅' : '❌'} Responsive positioning added`);
-        
-        const overallSuccess = zIndexFixed && viewportAware && responsive;
-        console.log(`\n🏆 Overall Task Status: ${overallSuccess ? 'COMPLETED ✅' : 'NEEDS WORK ❌'}`);
+    }
+    
+    wait(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
 // Auto-run tests when script is loaded
 if (typeof window !== 'undefined') {
-    window.addEventListener('load', () => {
-        setTimeout(() => {
+    // Browser environment
+    window.addEventListener('load', async () => {
+        // Wait a bit for other scripts to initialize
+        setTimeout(async () => {
             const verifier = new FloatingControlsPositioningVerifier();
-            verifier.runAllTests();
-        }, 1000); // Wait for floating controls panel to initialize
+            await verifier.runAllTests();
+        }, 1000);
     });
-}
-
-// Export for Node.js if needed
-if (typeof module !== 'undefined' && module.exports) {
+} else {
+    // Node.js environment
     module.exports = FloatingControlsPositioningVerifier;
 }

@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Canvas Sizing Optimization - Task 5</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            background: #1e293b;
+            color: white;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .test-btn {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .test-btn:hover {
+            background: #2563eb;
+        }
+        
+        .test-results {
+            background: #334155;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            min-height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            white-space: pre-wrap;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        
+        .demo-layout {
+            display: flex;
+            height: 500px;
+            border: 2px solid #475569;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-top: 20px;
+        }
+        
+        .demo-left-panel {
+            width: 250px;
+            background: #475569;
+            padding: 15px;
+            transition: transform 0.3s ease;
+        }
+        
+        .demo-left-panel.hidden {
+            transform: translateX(-100%);
+            width: 0;
+            padding: 0;
+        }
+        
+        .demo-main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #64748b;
+        }
+        
+        .demo-top-panel {
+            height: 60px;
+            background: #1e40af;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .demo-canvas-container {
+            flex: 1;
+            background: #0f172a;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #94a3b8;
+        }
+        
+        .demo-right-panel {
+            width: 250px;
+            background: #475569;
+            padding: 15px;
+            transition: transform 0.3s ease;
+        }
+        
+        .demo-right-panel.hidden {
+            transform: translateX(100%);
+            width: 0;
+            padding: 0;
+        }
+        
+        .panel-toggle {
+            margin: 10px 0;
+        }
+        
+        .metrics-display {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🧪 Canvas Sizing Optimization Test - Task 5</h1>
+            <p>Testing dynamic canvas sizing, top panel offset, and Three.js integration</p>
+        </div>
+        
+        <div class="test-controls">
+            <button class="test-btn" onclick="runAllTests()">🧪 Run All Tests</button>
+            <button class="test-btn" onclick="runInitTest()">🔧 Test Initialization</button>
+            <button class="test-btn" onclick="runSizeCalculationTest()">📐 Test Size Calculation</button>
+            <button class="test-btn" onclick="runZIndexTest()">📚 Test Z-Index Hierarchy</button>
+            <button class="test-btn" onclick="runPanelTest()">🎛️ Test Panel Integration</button>
+            <button class="test-btn" onclick="runIntegrationTest()">🔗 Test Integration</button>
+            <button class="test-btn" onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+        
+        <div id="test-results" class="test-results">
+            Click a test button to run canvas sizing optimization tests...
+        </div>
+        
+        <div class="demo-layout">
+            <div id="demo-left-panel" class="demo-left-panel">
+                <h3>Left Panel</h3>
+                <div class="panel-toggle">
+                    <button class="test-btn" onclick="toggleLeftPanel()">Toggle Left Panel</button>
+                </div>
+                <p>Configuration controls would go here</p>
+            </div>
+            
+            <div class="demo-main-content">
+                <div id="demo-top-panel" class="demo-top-panel">
+                    Top Panel (Height: 60px)
+                </div>
+                
+                <div id="demo-canvas-container" class="demo-canvas-container">
+                    <div>
+                        <h3>Canvas Container</h3>
+                        <p>3D Canvas would render here</p>
+                        <div id="canvas-metrics" class="metrics-display">
+                            Canvas metrics will appear here...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="demo-right-panel" class="demo-right-panel">
+                <h3>Right Panel</h3>
+                <div class="panel-toggle">
+                    <button class="test-btn" onclick="toggleRightPanel()">Toggle Right Panel</button>
+                </div>
+                <p>Information panels would go here</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { testCanvasSizingOptimization, testCanvasSizingOptimizerInit, testCanvasSizeCalculation, testZIndexHierarchy, testPanelStateIntegration, testCanvasSizingIntegration } from './js/test-canvas-sizing-optimization.js';
+        
+        // Make test functions available globally
+        window.testCanvasSizingOptimization = testCanvasSizingOptimization;
+        window.testCanvasSizingOptimizerInit = testCanvasSizingOptimizerInit;
+        window.testCanvasSizeCalculation = testCanvasSizeCalculation;
+        window.testZIndexHierarchy = testZIndexHierarchy;
+        window.testPanelStateIntegration = testPanelStateIntegration;
+        window.testCanvasSizingIntegration = testCanvasSizingIntegration;
+        
+        console.log('✅ Canvas sizing optimization tests loaded');
+    </script>
+
+    <script>
+        function logToResults(message) {
+            const results = document.getElementById('test-results');
+            results.textContent += message + '\n';
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        // Override console.log for test results
+        const originalLog = console.log;
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            logToResults(args.join(' '));
+        };
+        
+        function runAllTests() {
+            clearResults();
+            logToResults('🧪 Running all canvas sizing optimization tests...\n');
+            
+            setTimeout(() => {
+                try {
+                    window.testCanvasSizingOptimization();
+                } catch (error) {
+                    logToResults('❌ Error running tests: ' + error.message);
+                }
+            }, 100);
+        }
+        
+        function runInitTest() {
+            clearResults();
+            logToResults('🔧 Testing canvas sizing optimizer initialization...\n');
+            
+            setTimeout(() => {
+                try {
+                    window.testCanvasSizingOptimizerInit();
+                } catch (error) {
+                    logToResults('❌ Error: ' + error.message);
+                }
+            }, 100);
+        }
+        
+        function runSizeCalculationTest() {
+            clearResults();
+            logToResults('📐 Testing canvas size calculation...\n');
+            
+            setTimeout(() => {
+                try {
+                    window.testCanvasSizeCalculation();
+                } catch (error) {
+                    logToResults('❌ Error: ' + error.message);
+                }
+            }, 100);
+        }
+        
+        function runZIndexTest() {
+            clearResults();
+            logToResults('📚 Testing z-index hierarchy...\n');
+            
+            setTimeout(() => {
+                try {
+                    window.testZIndexHierarchy();
+                } catch (error) {
+                    logToResults('❌ Error: ' + error.message);
+                }
+            }, 100);
+        }
+        
+        function runPanelTest() {
+            clearResults();
+            logToResults('🎛️ Testing panel integration...\n');
+            
+            setTimeout(() => {
+                try {
+                    window.testPanelStateIntegration();
+                } catch (error) {
+                    logToResults('❌ Error: ' + error.message);
+                }
+            }, 100);
+        }
+        
+        function runIntegrationTest() {
+            clearResults();
+            logToResults('🔗 Testing canvas sizing integration...\n');
+            
+            setTimeout(() => {
+                try {
+                    window.testCanvasSizingIntegration();
+                } catch (error) {
+                    logToResults('❌ Error: ' + error.message);
+                }
+            }, 100);
+        }
+        
+        function clearResults() {
+            document.getElementById('test-results').textContent = '';
+        }
+        
+        function toggleLeftPanel() {
+            const panel = document.getElementById('demo-left-panel');
+            panel.classList.toggle('hidden');
+            updateCanvasMetrics();
+        }
+        
+        function toggleRightPanel() {
+            const panel = document.getElementById('demo-right-panel');
+            panel.classList.toggle('hidden');
+            updateCanvasMetrics();
+        }
+        
+        function updateCanvasMetrics() {
+            const container = document.getElementById('demo-canvas-container');
+            const topPanel = document.getElementById('demo-top-panel');
+            const leftPanel = document.getElementById('demo-left-panel');
+            const rightPanel = document.getElementById('demo-right-panel');
+            
+            const containerRect = container.getBoundingClientRect();
+            const topPanelRect = topPanel.getBoundingClientRect();
+            
+            const metrics = {
+                containerSize: {
+                    width: Math.round(containerRect.width),
+                    height: Math.round(containerRect.height)
+                },
+                topPanelHeight: Math.round(topPanelRect.height),
+                availableHeight: Math.round(containerRect.height),
+                panelStates: {
+                    leftHidden: leftPanel.classList.contains('hidden'),
+                    rightHidden: rightPanel.classList.contains('hidden')
+                }
+            };
+            
+            document.getElementById('canvas-metrics').textContent = JSON.stringify(metrics, null, 2);
+        }
+        
+        // Update metrics on load
+        setTimeout(updateCanvasMetrics, 100);
+        
+        // Update metrics on window resize
+        window.addEventListener('resize', updateCanvasMetrics);
+    </script>
+</body>
+</html>

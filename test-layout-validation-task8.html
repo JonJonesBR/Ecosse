@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Layout Validation - Task 8</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/layout-configuration.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .test-header h1 {
+            color: #333;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+
+        .test-header p {
+            color: #666;
+            font-size: 1.1em;
+            margin: 0;
+        }
+
+        .test-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+
+        .test-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .test-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .test-button:active {
+            transform: translateY(0);
+        }
+
+        .test-button.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            box-shadow: 0 4px 15px rgba(245, 87, 108, 0.3);
+        }
+
+        .test-button.secondary:hover {
+            box-shadow: 0 6px 20px rgba(245, 87, 108, 0.4);
+        }
+
+        .test-results {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .test-results:empty::before {
+            content: "Test results will appear here...";
+            color: #999;
+            font-style: italic;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-running {
+            background: #ffc107;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-success {
+            background: #28a745;
+        }
+
+        .status-error {
+            background: #dc3545;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #e0e0e0;
+            border-radius: 3px;
+            margin: 20px 0;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .info-panel {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .info-panel h3 {
+            margin: 0 0 15px 0;
+            color: #1976d2;
+        }
+
+        .info-panel ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+
+        .info-panel li {
+            margin: 5px 0;
+            color: #424242;
+        }
+
+        .layout-demo {
+            margin: 20px 0;
+            min-height: 400px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            position: relative;
+            background: #fafafa;
+        }
+
+        .demo-label {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🧪 Comprehensive Layout Validation</h1>
+            <p>Task 8: Test and validate layout fixes across responsive breakpoints, panel interactions, and canvas performance</p>
+        </div>
+
+        <div class="info-panel">
+            <h3>📋 Test Coverage</h3>
+            <p>This comprehensive test suite validates all layout fixes according to requirements:</p>
+            <ul>
+                <li><strong>1.1 & 1.2:</strong> Responsive behavior across all breakpoints (mobile, tablet, desktop, ultrawide)</li>
+                <li><strong>2.1:</strong> Panel interactions and toggle functionality</li>
+                <li><strong>3.1:</strong> Panel animations and transition performance</li>
+                <li><strong>4.1:</strong> Canvas rendering performance and memory stability</li>
+                <li><strong>Integration:</strong> System communication and error handling</li>
+            </ul>
+        </div>
+
+        <div class="test-controls">
+            <button class="test-button" onclick="runFullValidation()">
+                🚀 Run Full Validation Suite
+            </button>
+            <button class="test-button secondary" onclick="runResponsiveTests()">
+                📱 Test Responsive Behavior
+            </button>
+            <button class="test-button secondary" onclick="runPanelTests()">
+                🎛️ Test Panel Interactions
+            </button>
+            <button class="test-button secondary" onclick="runCanvasTests()">
+                🎨 Test Canvas Performance
+            </button>
+            <button class="test-button secondary" onclick="clearResults()">
+                🗑️ Clear Results
+            </button>
+        </div>
+
+        <div class="progress-bar" id="progress-bar" style="display: none;">
+            <div class="progress-fill" id="progress-fill"></div>
+        </div>
+
+        <div class="test-results" id="test-results"></div>
+
+        <!-- Layout Demo Area -->
+        <div class="layout-demo" id="layout-demo">
+            <div class="demo-label">Layout Test Area</div>
+            <!-- This will be populated with the actual layout structure for testing -->
+        </div>
+    </div>
+
+    <!-- Include the actual layout structure for testing -->
+    <div id="app-container" style="position: fixed; top: -9999px; left: -9999px; width: 1920px; height: 1080px;">
+        <div id="left-panel" style="width: 300px; background: rgba(255,0,0,0.1); flex-shrink: 0;">
+            <div style="padding: 20px;">Left Panel Content</div>
+        </div>
+        
+        <div id="main-content" style="flex: 1; display: flex; flex-direction: column;">
+            <div id="three-js-canvas-container" style="flex: 1; position: relative; min-height: 300px; background: rgba(0,0,255,0.1);">
+                <canvas width="800" height="600" style="width: 100%; height: 100%;"></canvas>
+            </div>
+        </div>
+        
+        <div id="right-panel" style="width: 300px; background: rgba(0,255,0,0.1); flex-shrink: 0;">
+            <div style="padding: 20px;">Right Panel Content</div>
+        </div>
+        
+        <div id="bottom-panel" style="position: fixed; bottom: 0; left: 0; right: 0; height: 100px; background: rgba(255,255,0,0.1); z-index: 100;">
+            <div style="padding: 20px;">Bottom Panel Content</div>
+        </div>
+    </div>
+
+    <!-- Load all required systems -->
+    <script type="module">
+        // Import all layout systems
+        import { layoutManager } from './js/systems/layoutManager.js';
+        import { responsiveBreakpoints } from './js/systems/responsiveBreakpoints.js';
+        import { viewportMonitor } from './js/systems/viewportMonitor.js';
+        import { coreLayoutSystem } from './js/systems/coreLayoutSystem.js';
+        import { layoutErrorHandler } from './js/ui/layoutErrorHandler.js';
+        
+        // Import the comprehensive test suite
+        import { LayoutValidationSuite, runComprehensiveLayoutValidation } from './js/test-layout-validation-comprehensive.js';
+
+        // Make systems available globally
+        window.layoutManager = layoutManager;
+        window.responsiveBreakpoints = responsiveBreakpoints;
+        window.viewportMonitor = viewportMonitor;
+        window.coreLayoutSystem = coreLayoutSystem;
+        window.layoutErrorHandler = layoutErrorHandler;
+        
+        // Make test suite available globally
+        window.LayoutValidationSuite = LayoutValidationSuite;
+        window.runComprehensiveLayoutValidation = runComprehensiveLayoutValidation;
+
+        console.log('🔧 Layout Validation Test Page loaded');
+        console.log('Available test functions:');
+        console.log('  - runFullValidation() - Run complete validation suite');
+        console.log('  - runResponsiveTests() - Test responsive behavior only');
+        console.log('  - runPanelTests() - Test panel interactions only');
+        console.log('  - runCanvasTests() - Test canvas performance only');
+    </script>
+
+    <script>
+        let currentTestSuite = null;
+        let testProgress = 0;
+
+        /**
+         * Run the full validation suite
+         */
+        async function runFullValidation() {
+            const resultsDiv = document.getElementById('test-results');
+            const progressBar = document.getElementById('progress-bar');
+            const progressFill = document.getElementById('progress-fill');
+            
+            try {
+                resultsDiv.innerHTML = '🚀 Starting Comprehensive Layout Validation Tests...\n\n';
+                progressBar.style.display = 'block';
+                progressFill.style.width = '0%';
+                
+                // Create and run test suite
+                currentTestSuite = new window.LayoutValidationSuite();
+                
+                // Monitor progress
+                const progressInterval = setInterval(() => {
+                    testProgress += 2;
+                    if (testProgress > 90) testProgress = 90;
+                    progressFill.style.width = testProgress + '%';
+                }, 200);
+                
+                const results = await currentTestSuite.runAllTests();
+                
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+                
+                // Display results
+                displayTestResults(results);
+                
+                setTimeout(() => {
+                    progressBar.style.display = 'none';
+                    testProgress = 0;
+                }, 2000);
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `❌ Test execution failed: ${error.message}\n`;
+                console.error('Test execution error:', error);
+                progressBar.style.display = 'none';
+            }
+        }
+
+        /**
+         * Run responsive behavior tests only
+         */
+        async function runResponsiveTests() {
+            const resultsDiv = document.getElementById('test-results');
+            
+            try {
+                resultsDiv.innerHTML = '📱 Testing Responsive Behavior...\n\n';
+                
+                currentTestSuite = new window.LayoutValidationSuite();
+                await currentTestSuite.testResponsiveBehavior();
+                
+                displayPartialResults(currentTestSuite.results, 'Responsive Behavior Tests');
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `❌ Responsive tests failed: ${error.message}\n`;
+                console.error('Responsive test error:', error);
+            }
+        }
+
+        /**
+         * Run panel interaction tests only
+         */
+        async function runPanelTests() {
+            const resultsDiv = document.getElementById('test-results');
+            
+            try {
+                resultsDiv.innerHTML = '🎛️ Testing Panel Interactions...\n\n';
+                
+                currentTestSuite = new window.LayoutValidationSuite();
+                await currentTestSuite.testPanelInteractions();
+                
+                displayPartialResults(currentTestSuite.results, 'Panel Interaction Tests');
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `❌ Panel tests failed: ${error.message}\n`;
+                console.error('Panel test error:', error);
+            }
+        }
+
+        /**
+         * Run canvas performance tests only
+         */
+        async function runCanvasTests() {
+            const resultsDiv = document.getElementById('test-results');
+            
+            try {
+                resultsDiv.innerHTML = '🎨 Testing Canvas Performance...\n\n';
+                
+                currentTestSuite = new window.LayoutValidationSuite();
+                await currentTestSuite.testCanvasPerformance();
+                
+                displayPartialResults(currentTestSuite.results, 'Canvas Performance Tests');
+                
+            } catch (error) {
+                resultsDiv.innerHTML += `❌ Canvas tests failed: ${error.message}\n`;
+                console.error('Canvas test error:', error);
+            }
+        }
+
+        /**
+         * Display comprehensive test results
+         */
+        function displayTestResults(results) {
+            const resultsDiv = document.getElementById('test-results');
+            
+            let html = `📊 COMPREHENSIVE LAYOUT VALIDATION RESULTS\n`;
+            html += `${'='.repeat(60)}\n\n`;
+            html += `🕒 Test Execution: ${new Date(results.timestamp).toLocaleString()}\n`;
+            html += `📈 Overall: ${results.summary.passedTests}/${results.summary.totalTests} tests passed (${results.summary.passRate}%)\n\n`;
+            
+            // Test suite summaries
+            Object.entries(results.testSuites).forEach(([suiteName, suite]) => {
+                if (suite.summary) {
+                    const status = suite.summary.passRate >= 80 ? '✅' : suite.summary.passRate >= 60 ? '⚠️' : '❌';
+                    html += `${status} ${suiteName}: ${suite.summary.passed}/${suite.summary.total} (${suite.summary.passRate}%)\n`;
+                    
+                    // Show individual test results
+                    if (suite.tests) {
+                        suite.tests.forEach(test => {
+                            const testStatus = test.passed ? '  ✅' : '  ❌';
+                            html += `${testStatus} ${test.name}: ${test.details}\n`;
+                        });
+                    }
+                    html += '\n';
+                }
+            });
+            
+            // Performance metrics
+            if (currentTestSuite && currentTestSuite.performanceMetrics.canvasRenderTime.length > 0) {
+                const avgRenderTime = currentTestSuite.performanceMetrics.canvasRenderTime.reduce((a, b) => a + b, 0) / 
+                                    currentTestSuite.performanceMetrics.canvasRenderTime.length;
+                html += `⚡ Average Canvas Render Time: ${avgRenderTime.toFixed(2)}ms\n`;
+            }
+            
+            // Final assessment
+            html += '\n' + '='.repeat(60) + '\n';
+            if (results.summary.passRate >= 90) {
+                html += '🎉 EXCELLENT: Layout system is performing exceptionally well!\n';
+            } else if (results.summary.passRate >= 75) {
+                html += '✅ GOOD: Layout system is performing well with minor issues.\n';
+            } else if (results.summary.passRate >= 60) {
+                html += '⚠️ NEEDS ATTENTION: Layout system has some issues that should be addressed.\n';
+            } else {
+                html += '❌ CRITICAL: Layout system has significant issues requiring immediate attention.\n';
+            }
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        /**
+         * Display partial test results
+         */
+        function displayPartialResults(results, testType) {
+            const resultsDiv = document.getElementById('test-results');
+            
+            let html = `📊 ${testType.toUpperCase()} RESULTS\n`;
+            html += `${'='.repeat(40)}\n\n`;
+            html += `📈 Results: ${results.summary.passedTests}/${results.summary.totalTests} tests passed (${results.summary.passRate}%)\n\n`;
+            
+            // Show test details
+            Object.entries(results.testSuites).forEach(([suiteName, suite]) => {
+                if (suite.tests) {
+                    html += `📋 ${suiteName}:\n`;
+                    suite.tests.forEach(test => {
+                        const status = test.passed ? '✅' : '❌';
+                        html += `  ${status} ${test.name}: ${test.details}\n`;
+                    });
+                    html += '\n';
+                }
+            });
+            
+            resultsDiv.innerHTML = html;
+        }
+
+        /**
+         * Clear test results
+         */
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('progress-bar').style.display = 'none';
+            testProgress = 0;
+        }
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🧪 Layout Validation Test Page ready');
+            
+            // Set up the app container for testing
+            const appContainer = document.getElementById('app-container');
+            if (appContainer) {
+                appContainer.style.display = 'flex';
+                appContainer.style.flexDirection = 'row';
+                appContainer.style.position = 'relative';
+            }
+        });
+    </script>
+</body>
+</html>

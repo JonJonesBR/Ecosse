@@ -21,6 +21,7 @@ class FloatingControlsPanel {
         this.wrapPanelContent();
         this.setupEventListeners();
         this.setupResponsiveHandling();
+        this.setupZIndexManagement();
         this.loadSavedState();
         this.setupElementControlsIntegration();
     }
@@ -126,6 +127,50 @@ class FloatingControlsPanel {
         }
     }
     
+    setupZIndexManagement() {
+        // Ensure proper z-index layering to prevent canvas obstruction
+        const canvasContainer = document.getElementById('three-js-canvas-container');
+        const canvas = canvasContainer?.querySelector('canvas');
+        
+        if (canvasContainer) {
+            // Set canvas container z-index lower than floating panel
+            canvasContainer.style.zIndex = '10';
+            canvasContainer.style.position = 'relative';
+        }
+        
+        if (canvas) {
+            // Ensure canvas itself has lowest z-index
+            canvas.style.zIndex = '1';
+            canvas.style.position = 'relative';
+        }
+        
+        // Set floating panel z-index above canvas but below modals
+        this.panel.style.zIndex = '50';
+        
+        // Monitor for dynamic canvas creation
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === Node.ELEMENT_NODE) {
+                        const newCanvas = node.querySelector?.('canvas') || 
+                                        (node.tagName === 'CANVAS' ? node : null);
+                        if (newCanvas) {
+                            newCanvas.style.zIndex = '1';
+                            newCanvas.style.position = 'relative';
+                        }
+                    }
+                });
+            });
+        });
+        
+        if (canvasContainer) {
+            observer.observe(canvasContainer, { childList: true, subtree: true });
+        }
+        
+        // Store observer for cleanup
+        this.zIndexObserver = observer;
+    }
+
     setupResponsiveHandling() {
         const mobileQuery = window.matchMedia('(max-width: 768px)');
         const tabletQuery = window.matchMedia('(min-width: 769px) and (max-width: 1024px)');
@@ -138,6 +183,7 @@ class FloatingControlsPanel {
                 this.panel.classList.add('compact-mode');
                 this.isCompactMode = true;
                 this.updateViewportAwareness();
+                this.disableDragOnMobile();
             } else if (tabletQuery.matches) {
                 // Tablet: restore saved position but keep compact mode available
                 this.setPosition(this.currentPosition);
@@ -145,6 +191,7 @@ class FloatingControlsPanel {
                     this.panel.classList.remove('compact-mode');
                 }
                 this.updateViewportAwareness();
+                this.enableDragForDesktop();
             } else if (desktopQuery.matches) {
                 // Desktop: full functionality with saved position
                 this.setPosition(this.currentPosition);
@@ -152,6 +199,7 @@ class FloatingControlsPanel {
                     this.panel.classList.remove('compact-mode');
                 }
                 this.updateViewportAwareness();
+                this.enableDragForDesktop();
             }
         };
         
@@ -170,9 +218,10 @@ class FloatingControlsPanel {
     }
     
     startDrag(e) {
-        if (window.innerWidth <= 768) return; // Disable drag on mobile
+        if (!this.isDragEnabled || window.innerWidth <= 768) return; // Disable drag on mobile or when disabled
         
         this.isDragging = true;
+        this.panel.classList.add('dragging');
         this.panel.style.transition = 'none';
         
         const clientX = e.type === 'touchstart' ? e.touches[0].clientX : e.clientX;
@@ -234,9 +283,9 @@ class FloatingControlsPanel {
         );
         
         if (isNearEdge) {
-            this.panel.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+            this.panel.classList.add('near-edge');
         } else {
-            this.panel.style.borderColor = 'rgba(59, 130, 246, 0.3)';
+            this.panel.classList.remove('near-edge');
         }
         
         if (e.type === 'touchmove') {
@@ -248,9 +297,13 @@ class FloatingControlsPanel {
         if (!this.isDragging) return;
         
         this.isDragging = false;
+        this.panel.classList.remove('dragging');
         this.panel.style.transition = '';
         this.dragHandle.style.cursor = 'grab';
         document.body.style.userSelect = '';
+        
+        // Remove viewport boundary feedback
+        this.panel.classList.remove('near-edge');
         
         // Snap to nearest position
         this.snapToNearestPosition();
@@ -311,16 +364,19 @@ class FloatingControlsPanel {
     }
     
     updateViewportAwareness() {
-        // Ensure panel stays within viewport bounds
+        // Ensure panel stays within viewport bounds with enhanced safety margins
         const rect = this.panel.getBoundingClientRect();
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
         
         let needsRepositioning = false;
+        const safeMargin = 20;
         
-        // Check if panel is outside viewport bounds
-        if (rect.left < 0 || rect.right > viewportWidth || 
-            rect.top < 0 || rect.bottom > viewportHeight) {
+        // Check if panel is outside safe viewport bounds
+        if (rect.left < safeMargin || 
+            rect.right > viewportWidth - safeMargin || 
+            rect.top < safeMargin || 
+            rect.bottom > viewportHeight - safeMargin) {
             needsRepositioning = true;
         }
         
@@ -329,12 +385,19 @@ class FloatingControlsPanel {
             needsRepositioning = true;
         }
         
+        // Check if panel is too wide for side positions
+        if (this.currentPosition.includes('side-') && 
+            rect.width > viewportWidth * 0.4) {
+            needsRepositioning = true;
+        }
+        
         if (needsRepositioning) {
-            // Force repositioning to a safe position
+            // Force repositioning to a safe position with viewport awareness
             if (viewportWidth <= 768) {
+                // Mobile: always bottom-center
                 this.setPosition('bottom-center');
-            } else {
-                // Try to maintain similar position but ensure it fits
+            } else if (viewportWidth <= 1024) {
+                // Tablet: prefer bottom positions
                 if (this.currentPosition.includes('left')) {
                     this.setPosition('bottom-left');
                 } else if (this.currentPosition.includes('right')) {
@@ -342,8 +405,15 @@ class FloatingControlsPanel {
                 } else {
                     this.setPosition('bottom-center');
                 }
+            } else {
+                // Desktop: try to maintain similar position but ensure it fits
+                const validPosition = this.validatePositionForViewport(this.currentPosition);
+                this.setPosition(validPosition);
             }
         }
+        
+        // Ensure z-index is maintained after repositioning
+        this.panel.style.zIndex = '50';
     }
     
     debounceViewportUpdate() {
@@ -355,6 +425,26 @@ class FloatingControlsPanel {
         this.viewportUpdateTimeout = setTimeout(() => {
             this.updateViewportAwareness();
         }, 150);
+    }
+    
+    disableDragOnMobile() {
+        // Hide drag handle on mobile
+        if (this.dragHandle) {
+            this.dragHandle.style.display = 'none';
+        }
+        
+        // Disable drag functionality
+        this.isDragEnabled = false;
+    }
+    
+    enableDragForDesktop() {
+        // Show drag handle on desktop/tablet
+        if (this.dragHandle) {
+            this.dragHandle.style.display = 'block';
+        }
+        
+        // Enable drag functionality
+        this.isDragEnabled = true;
     }
     
     toggleCollapse() {
@@ -396,13 +486,18 @@ class FloatingControlsPanel {
             'position-side-right'
         );
         
-        // Reset inline styles
+        // Reset inline styles but maintain z-index
         this.panel.style.left = '';
         this.panel.style.top = '';
         this.panel.style.right = '';
         this.panel.style.bottom = '';
         this.panel.style.transform = '';
-        this.panel.style.borderColor = ''; // Reset border color from drag feedback
+        
+        // Remove visual feedback classes
+        this.panel.classList.remove('near-edge');
+        
+        // Ensure z-index is maintained
+        this.panel.style.zIndex = '50';
         
         // Validate position for current viewport
         const validPosition = this.validatePositionForViewport(position);
@@ -578,6 +673,27 @@ class FloatingControlsPanel {
             position: this.currentPosition,
             compact: this.isCompactMode
         };
+    }
+    
+    // Cleanup method for proper resource management
+    destroy() {
+        // Disconnect z-index observer
+        if (this.zIndexObserver) {
+            this.zIndexObserver.disconnect();
+        }
+        
+        // Clear viewport update timeout
+        if (this.viewportUpdateTimeout) {
+            clearTimeout(this.viewportUpdateTimeout);
+        }
+        
+        // Remove event listeners
+        window.removeEventListener('resize', this.debounceViewportUpdate);
+        
+        // Remove panel from DOM if needed
+        if (this.panel && this.panel.parentNode) {
+            this.panel.parentNode.removeChild(this.panel);
+        }
     }
 }
 
