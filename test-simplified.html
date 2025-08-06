@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ecosse Simplificado - Sandbox Planetário</title>
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="css/style-simplified.css">
+    <link rel="stylesheet" href="css/canvas-resize-responsive-simplified.css">
+    
+    <!-- Mapa de importação para Three.js -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+</head>
+<body>
+    <!-- Overlay de carregamento -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Carregando...</p>
+    </div>
+    
+    <!-- Mensagem de erro -->
+    <div id="error-message" class="error-message hidden"></div>
+    
+    <!-- Container principal -->
+    <div class="app-container">
+        <!-- Painel lateral esquerdo -->
+        <div class="left-panel">
+            <h2>Configuração do Planeta</h2>
+            
+            <div class="form-group">
+                <label for="planet-type">Tipo de Planeta</label>
+                <select id="planet-type" class="form-control">
+                    <option value="terrestrial">Terrestre</option>
+                    <option value="desert">Deserto</option>
+                    <option value="ice">Gelado</option>
+                    <option value="ocean">Oceânico</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="gravity">Gravidade</label>
+                <input type="range" id="gravity" class="form-range" min="0.1" max="2" step="0.1" value="1">
+                <span class="range-value">1.0</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="atmosphere">Atmosfera</label>
+                <select id="atmosphere" class="form-control">
+                    <option value="none">Nenhuma</option>
+                    <option value="thin">Fina</option>
+                    <option value="oxygenated" selected>Oxigenada</option>
+                    <option value="dense">Densa</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="temperature">Temperatura</label>
+                <input type="range" id="temperature" class="form-range" min="0" max="1" step="0.1" value="0.5">
+                <span class="range-value">0.5</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="water-coverage">Cobertura de Água</label>
+                <input type="range" id="water-coverage" class="form-range" min="0" max="1" step="0.1" value="0.7">
+                <span class="range-value">0.7</span>
+            </div>
+            
+            <div class="form-group">
+                <label for="luminosity">Luminosidade</label>
+                <input type="range" id="luminosity" class="form-range" min="0.1" max="2" step="0.1" value="1">
+                <span class="range-value">1.0</span>
+            </div>
+            
+            <button id="generate-planet" class="btn btn-primary">Gerar Planeta</button>
+            
+            <div class="divider"></div>
+            
+            <h2>Elementos do Ecossistema</h2>
+            
+            <div class="ecosystem-elements">
+                <button id="add-plant" class="element-btn plant">Planta</button>
+                <button id="add-herbivore" class="element-btn herbivore">Herbívoro</button>
+                <button id="add-carnivore" class="element-btn carnivore">Carnívoro</button>
+            </div>
+        </div>
+        
+        <!-- Conteúdo principal -->
+        <div class="main-content">
+            <!-- Container do canvas -->
+            <div id="threejs-container" class="threejs-container">
+                <canvas id="threejs-canvas"></canvas>
+            </div>
+            
+            <!-- Controles da simulação -->
+            <div class="simulation-controls">
+                <button id="start-stop" class="btn">Iniciar</button>
+                <button id="reset" class="btn">Reiniciar</button>
+                <button id="save" class="btn">Salvar</button>
+                <button id="load" class="btn">Carregar</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Caixa de mensagem -->
+    <div id="message-box" class="message-box hidden">
+        <p id="message-text"></p>
+    </div>
+    
+    <!-- Scripts -->
+    <script type="module" src="js/canvasInitialization-simplified.js"></script>
+    <script type="module" src="js/eventSystem-simplified.js"></script>
+    <script type="module" src="js/uiSystem-simplified.js"></script>
+    <script type="module" src="js/simulationSystem-simplified.js"></script>
+    <script type="module" src="js/renderingSystem-simplified.js"></script>
+    <script type="module" src="js/persistenceSystem-simplified.js"></script>
+    <script type="module" src="js/main-simplified.js"></script>
+</body>
+</html>

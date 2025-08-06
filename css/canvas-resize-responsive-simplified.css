@@ -1,0 +1,120 @@
+/**
+ * Canvas Resize and Responsive Behavior Styles - Versão Simplificada
+ */
+
+/* Container principal do canvas */
+#threejs-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 300px;
+    
+    /* Configuração responsiva */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    /* Estilo visual */
+    background: linear-gradient(135deg, #1e293b, #334155);
+    
+    /* Gerenciamento de z-index */
+    z-index: 5;
+    
+    /* Prevenir problemas de overflow */
+    overflow: hidden;
+    
+    /* Box sizing adequado */
+    box-sizing: border-box;
+    
+    /* Transições suaves para mudanças responsivas */
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Estilo do elemento canvas */
+#threejs-container canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100% !important;
+    height: 100% !important;
+    
+    /* Canvas deve estar abaixo dos controles flutuantes mas acima de outros elementos */
+    z-index: 6;
+    
+    /* Garantir renderização adequada */
+    display: block;
+    
+    /* Prevenir que o canvas interfira com eventos de toque em dispositivos móveis */
+    touch-action: manipulation;
+    
+    /* Transições suaves para mudanças de tamanho */
+    transition: opacity 0.2s ease;
+}
+
+/* Breakpoints responsivos para o container do canvas */
+
+/* Dispositivos móveis (≤768px) */
+@media (max-width: 768px) {
+    #threejs-container {
+        /* Ajustar altura mínima para dispositivos móveis */
+        min-height: 250px;
+        max-height: 60vh;
+        
+        /* Garantir manipulação adequada de toque */
+        touch-action: pan-x pan-y;
+        
+        /* Otimizar para performance em dispositivos móveis */
+        will-change: transform;
+    }
+    
+    #threejs-container canvas {
+        /* Otimizar canvas para dispositivos móveis */
+        image-rendering: optimizeSpeed;
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: optimize-contrast;
+        
+        /* Prevenir zoom em double-tap */
+        touch-action: manipulation;
+    }
+}
+
+/* Tablets (769px-1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+    #threejs-container {
+        min-height: 400px;
+        max-height: 70vh;
+    }
+}
+
+/* Desktop (≥1025px) */
+@media (min-width: 1025px) {
+    #threejs-container {
+        min-height: 500px;
+        /* Em tela cheia em modo desktop */
+        height: 100%;
+    }
+}
+
+/* Classes de estado */
+
+/* Classe para quando o canvas está em modo de carregamento */
+.loading {
+    opacity: 0.7;
+    filter: blur(2px);
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+/* Classe para quando o canvas está redimensionando */
+.resizing {
+    transition: none;
+}
+
+/* Classe para quando o canvas está em modo de foco */
+.focus-mode {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 1000;
+}
