@@ -49,6 +49,7 @@ class EventSystem {
             // Eventos de Elementos
             ELEMENT_ADDED: 'element:added',
             ELEMENT_ADDED_COMPLETE: 'element:added:complete',
+            ELEMENT_REMOVED: 'element:removed',
             
             // Eventos de Persistência
             SAVE_STATE: 'persistence:save',
@@ -62,7 +63,10 @@ class EventSystem {
             SYSTEM_INFO: 'system:info',
             
             // Eventos de Three.js
-            THREEJS_INITIALIZED: 'threejs:initialized'
+            THREEJS_INITIALIZED: 'threejs:initialized',
+
+            // Eventos do jogador
+            PLAYER_MOVE: 'player:move'
         };
     }
     

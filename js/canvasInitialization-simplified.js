@@ -14,8 +14,9 @@ import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 class CanvasInitialization {
     constructor() {
         // Elementos DOM
-        this.container = document.getElementById('threejs-container');
-        this.loadingIndicator = document.getElementById('loading-indicator');
+        this.container = document.getElementById('canvas-container');
+        this.threejsContainer = document.getElementById('threejs-container');
+        this.loadingIndicator = document.getElementById('loading-overlay');
         
         // Propriedades Three.js
         this.scene = null;
@@ -44,7 +45,9 @@ class CanvasInitialization {
         return new Promise((resolve, reject) => {
             try {
                 // Mostrar indicador de carregamento
-                this.loadingIndicator.classList.remove('hidden');
+                if (this.loadingIndicator) {
+                    this.loadingIndicator.classList.remove('hidden');
+                }
                 
                 // Verificar suporte a WebGL
                 if (!this.checkWebGLSupport()) {
@@ -66,7 +69,9 @@ class CanvasInitialization {
                 this.isInitialized = true;
                 
                 // Ocultar indicador de carregamento
-                this.loadingIndicator.classList.add('hidden');
+                if (this.loadingIndicator) {
+                    this.loadingIndicator.classList.add('hidden');
+                }
                 
                 console.log('Canvas inicializado com sucesso!');
                 resolve({

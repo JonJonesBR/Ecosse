@@ -67,7 +67,9 @@ export const waterFragmentShader = `
   
   // Function to create caustics effect
   vec3 caustics(vec2 uv, float time) {
-    vec2 p = mod(uv * distortionScale, vec2(1.0)) * 2.0 - 1.0;
+    // Clamp distortionScale to valid bias range to prevent shader warnings
+    float clampedDistortionScale = clamp(distortionScale, -16.0, 15.99);
+    vec2 p = mod(uv * clampedDistortionScale, vec2(1.0)) * 2.0 - 1.0;
     float d = length(p);
     vec2 st = uv * 0.1 + 0.2 * vec2(cos(time * 0.4 + 2.0 * d), sin(time * 0.3 + 2.0 * d));
     

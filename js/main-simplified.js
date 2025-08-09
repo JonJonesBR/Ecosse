@@ -71,9 +71,14 @@ function initializeCanvas() {
     
     // Obter referência ao canvas
     const canvas = document.getElementById('threejs-canvas');
+    const container = document.getElementById('threejs-container');
     
     if (!canvas) {
         throw new Error('Canvas não encontrado');
+    }
+    
+    if (!container) {
+        throw new Error('Container do Three.js não encontrado');
     }
     
     // Verificar suporte a WebGL
@@ -82,7 +87,17 @@ function initializeCanvas() {
     }
     
     // Publicar evento de inicialização do canvas
-    eventSystem.publish(eventSystem.EVENTS.CANVAS_INITIALIZED, { canvas });
+    eventSystem.publish(eventSystem.EVENTS.CANVAS_INITIALIZED, { canvasId: canvas.id });
+
+    // Adicionar criatura do jogador
+    eventSystem.publish(eventSystem.EVENTS.ELEMENT_ADDED, {
+        element: {
+            type: 'herbivore',
+            isPlayer: true,
+            position: { x: 0.5, y: 0.5, z: 0 },
+            properties: {}
+        }
+    });
     
     console.log('Canvas inicializado');
 }
@@ -182,8 +197,8 @@ function setupEventListeners() {
                 eventSystem.publish(eventSystem.EVENTS.SIMULATION_RESET);
                 break;
                 
-            case 's':
-                // S - Salvar simulação
+            case 'p':
+                // P - Salvar simulação
                 if (event.ctrlKey || event.metaKey) {
                     event.preventDefault();
                     eventSystem.publish(eventSystem.EVENTS.SAVE_STATE);
@@ -196,6 +211,20 @@ function setupEventListeners() {
                     event.preventDefault();
                     eventSystem.publish(eventSystem.EVENTS.LOAD_STATE);
                 }
+                break;
+            
+            // Controles de movimento do jogador
+            case 'w':
+                eventSystem.publish(eventSystem.EVENTS.PLAYER_MOVE, { direction: { x: 0, y: 1, z: 0 } });
+                break;
+            case 's':
+                eventSystem.publish(eventSystem.EVENTS.PLAYER_MOVE, { direction: { x: 0, y: -1, z: 0 } });
+                break;
+            case 'a':
+                eventSystem.publish(eventSystem.EVENTS.PLAYER_MOVE, { direction: { x: -1, y: 0, z: 0 } });
+                break;
+            case 'd':
+                eventSystem.publish(eventSystem.EVENTS.PLAYER_MOVE, { direction: { x: 1, y: 0, z: 0 } });
                 break;
         }
     });

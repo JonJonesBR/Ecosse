@@ -5,6 +5,7 @@
 
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { SimplexNoise } from 'three/addons/math/SimplexNoise.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -12,6 +13,7 @@ import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { FXAAShader } from 'three/addons/shaders/FXAAShader.js';
 
 import eventSystem from './eventSystem-simplified.js';
+import simulationSystem from './simulationSystem-simplified.js';
 
 class RenderingSystem {
     constructor() {
@@ -37,6 +39,8 @@ class RenderingSystem {
         this.isInitialized = false;
         this.isRendering = false;
         this.animationFrameId = null;
+        this.sunLights = [];
+        this.lightAngle = 0;
         
         // Inicializar
         this.init();
@@ -65,11 +69,13 @@ class RenderingSystem {
         
         // Eventos de elementos
         eventSystem.subscribe(eventSystem.EVENTS.ELEMENT_ADDED_COMPLETE, this.addElement.bind(this));
+        eventSystem.subscribe(eventSystem.EVENTS.ELEMENT_REMOVED, this.removeElement.bind(this));
         
         // Eventos de simulação
         eventSystem.subscribe(eventSystem.EVENTS.SIMULATION_UPDATED, this.updateElements.bind(this));
         eventSystem.subscribe(eventSystem.EVENTS.SIMULATION_STARTED, this.startRendering.bind(this));
         eventSystem.subscribe(eventSystem.EVENTS.SIMULATION_STOPPED, this.stopRendering.bind(this));
+        eventSystem.subscribe(eventSystem.EVENTS.ELEMENT_ADDED_COMPLETE, this.addElement.bind(this));
         eventSystem.subscribe(eventSystem.EVENTS.SIMULATION_PAUSED, this.pauseRendering.bind(this));
         eventSystem.subscribe(eventSystem.EVENTS.SIMULATION_RESUMED, this.resumeRendering.bind(this));
     }
@@ -79,15 +85,20 @@ class RenderingSystem {
      * @param {Object} data - Dados do evento
      */
     setupThreeJs(data) {
-        if (!data || !data.canvas) {
-            console.error('Canvas não fornecido para inicialização do Three.js');
+        if (!data || !data.canvasId) {
+            console.error('ID do Canvas não fornecido para inicialização do Three.js');
             return;
         }
         
-        const canvas = data.canvas;
-        const container = canvas.parentElement;
-        const width = container.clientWidth;
-        const height = container.clientHeight;
+        const canvas = document.getElementById(data.canvasId);
+        if (!canvas) {
+            console.error('Elemento canvas não encontrado com o ID:', data.canvasId);
+            return;
+        }
+
+        const container = document.getElementById('threejs-container') || canvas.parentElement;
+        const width = container.clientWidth || window.innerWidth;
+        const height = container.clientHeight || window.innerHeight;
         
         // Criar cena
         this.scene = new THREE.Scene();
@@ -149,19 +160,16 @@ class RenderingSystem {
      */
     setupLighting() {
         // Luz ambiente
-        const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
         this.scene.add(ambientLight);
-        
-        // Luz direcional (sol)
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1.0);
-        sunLight.position.set(10, 10, 10);
-        sunLight.castShadow = true;
-        this.scene.add(sunLight);
-        
-        // Luz de preenchimento
-        const fillLight = new THREE.DirectionalLight(0x8888ff, 0.2);
-        fillLight.position.set(-10, -10, -10);
-        this.scene.add(fillLight);
+
+        // Luz direcional principal (sol)
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        directionalLight.position.set(10, 10, 10);
+        directionalLight.castShadow = true;
+        this.scene.add(directionalLight);
+
+        this.sunLights.push(directionalLight);
     }
     
     /**
@@ -305,6 +313,9 @@ class RenderingSystem {
         // Limpar elementos do ecossistema
         this.clearEcosystemElements();
         
+        // Configurar iluminação do planeta (sóis)
+        
+        
         // Criar geometria do planeta
         const planetGeometry = new THREE.SphereGeometry(this.planetRadius, 64, 64);
         
@@ -351,11 +362,12 @@ class RenderingSystem {
             planetColor.multiplyScalar(0.8).add(new THREE.Color(0xff0000).multiplyScalar(0.1));
         }
         
-        // Criar material do planeta
+        // Criar material do planeta com texturas processuais
         const planetMaterial = new THREE.MeshPhongMaterial({
-            color: planetColor,
-            shininess: 5,
-            flatShading: false
+            map: this.generatePlanetTexture(this.planetConfig),
+            bumpMap: this.generatePlanetTexture(this.planetConfig, true), // Usar a mesma lógica para o bump map
+            bumpScale: 0.05,
+            shininess: 10
         });
         
         // Criar malha do planeta
@@ -377,13 +389,15 @@ class RenderingSystem {
         }
         
         // Criar nuvens se houver água
-        if (this.planetConfig.waterCoverage > 0.2) {
-            const cloudsGeometry = new THREE.SphereGeometry(this.planetRadius + 0.3, 32, 32);
+        if (this.planetConfig.waterCoverage > 0.1) {
+            const cloudsGeometry = new THREE.SphereGeometry(this.planetRadius + 0.1, 64, 64);
+            const cloudTexture = this.generateCloudTexture();
             const cloudsMaterial = new THREE.MeshPhongMaterial({
-                color: 0xffffff,
+                map: cloudTexture,
+                alphaMap: cloudTexture,
                 transparent: true,
-                opacity: 0.3 * this.planetConfig.waterCoverage,
-                side: THREE.FrontSide
+                opacity: 0.8 * this.planetConfig.waterCoverage,
+                side: THREE.DoubleSide
             });
             
             this.clouds = new THREE.Mesh(cloudsGeometry, cloudsMaterial);
@@ -396,12 +410,133 @@ class RenderingSystem {
             config: this.planetConfig
         });
     }
+
+    /**
+     * Gera uma textura processual para o planeta
+     * @param {Object} config - Configuração do planeta
+     * @param {boolean} isBump - Se a textura é para bump map
+     * @returns {THREE.CanvasTexture} Textura do planeta
+     */
+    generatePlanetTexture(config, isBump = false) {
+        const size = 512;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        const simplex = new SimplexNoise();
+
+        const landColor = new THREE.Color(0x4a7d2a); // Verde escuro
+        const waterColor = new THREE.Color(0x2266aa); // Azul
+        const iceColor = new THREE.Color(0xffffff);
+        const desertColor = new THREE.Color(0xddaa66);
+
+        let primaryColor, secondaryColor;
+
+        switch (config.type) {
+            case 'ice':
+                primaryColor = iceColor;
+                secondaryColor = waterColor.clone().lerp(iceColor, 0.5);
+                break;
+            case 'desert':
+                primaryColor = desertColor;
+                secondaryColor = desertColor.clone().darken(1);
+                break;
+            default: // Terrestrial
+                primaryColor = landColor;
+                secondaryColor = waterColor;
+        }
+
+        const imageData = context.createImageData(size, size);
+        for (let x = 0; x < size; x++) {
+            for (let y = 0; y < size; y++) {
+                const u = x / size;
+                const v = y / size;
+                
+                // Mapeamento para esfera
+                const lat = (v - 0.5) * Math.PI;
+                const lon = (u - 0.5) * 2 * Math.PI;
+                const px = Math.cos(lat) * Math.cos(lon);
+                const py = Math.cos(lat) * Math.sin(lon);
+                const pz = Math.sin(lat);
+
+                // Ruído Simplex para continentes
+                let noise = simplex.noise3d(px * 4, py * 4, pz * 4);
+                noise = (noise + 1) / 2; // Normalizar para 0-1
+
+                const threshold = 1 - config.waterCoverage;
+                const isLand = noise > threshold;
+
+                let color;
+                if (isBump) {
+                    const intensity = isLand ? 200 : 100;
+                    color = new THREE.Color(intensity / 255, intensity / 255, intensity / 255);
+                } else {
+                    color = isLand ? primaryColor : secondaryColor;
+                }
+
+                const i = (y * size + x) * 4;
+                imageData.data[i] = color.r * 255;
+                imageData.data[i + 1] = color.g * 255;
+                imageData.data[i + 2] = color.b * 255;
+                imageData.data[i + 3] = 255;
+            }
+        }
+
+        context.putImageData(imageData, 0, 0);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
+
+    /**
+     * Gera uma textura processual para as nuvens
+     * @returns {THREE.CanvasTexture} Textura das nuvens
+     */
+    generateCloudTexture() {
+        const size = 1024;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const context = canvas.getContext('2d');
+        const simplex = new SimplexNoise();
+
+        const imageData = context.createImageData(size, size);
+        for (let x = 0; x < size; x++) {
+            for (let y = 0; y < size; y++) {
+                const u = x / size;
+                const v = y / size;
+
+                const lat = (v - 0.5) * Math.PI;
+                const lon = (u - 0.5) * 2 * Math.PI;
+                const px = Math.cos(lat) * Math.cos(lon);
+                const py = Math.cos(lat) * Math.sin(lon);
+                const pz = Math.sin(lat);
+
+                let noise = simplex.noise3d(px * 6, py * 6, pz * 6);
+                noise = (noise + 1) / 2; // 0-1
+                noise = Math.pow(noise, 2.5); // Aumentar contraste
+
+                const intensity = Math.max(0, noise * 255);
+                const i = (y * size + x) * 4;
+                imageData.data[i] = 255;
+                imageData.data[i + 1] = 255;
+                imageData.data[i + 2] = 255;
+                imageData.data[i + 3] = intensity;
+            }
+        }
+
+        context.putImageData(imageData, 0, 0);
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.needsUpdate = true;
+        return texture;
+    }
     
     /**
      * Adiciona um elemento ao ecossistema
      * @param {Object} data - Dados do elemento
      */
     addElement(data) {
+        console.log('addElement called with data:', data);
         if (!data || !data.element) return;
         
         const element = data.element;
@@ -452,8 +587,37 @@ class RenderingSystem {
         // Armazenar referência
         this.ecosystemElements[element.id] = {
             mesh,
-            element
+            elementData: element // Renomeado para evitar conflito de nomes
         };
+    }
+
+    /**
+     * Remove um elemento do ecossistema
+     * @param {Object} data - Dados do evento
+     */
+    removeElement(data) {
+        if (!data || !data.id) return;
+
+        const elementRef = this.ecosystemElements[data.id];
+        if (elementRef) {
+            const { mesh } = elementRef;
+            
+            // Remover da cena
+            this.scene.remove(mesh);
+            
+            // Liberar memória
+            if (mesh.geometry) mesh.geometry.dispose();
+            if (mesh.material) {
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(material => material.dispose());
+                } else {
+                    mesh.material.dispose();
+                }
+            }
+            
+            // Remover da lista de referência
+            delete this.ecosystemElements[data.id];
+        }
     }
     
     /**
@@ -481,6 +645,8 @@ class RenderingSystem {
     updateElements(data) {
         if (!data) return;
         
+        const simState = data.simulationState;
+
         // Atualizar rotação do planeta
         if (this.planet) {
             this.planet.rotation.y += 0.001 * data.deltaTime;
@@ -491,8 +657,42 @@ class RenderingSystem {
             this.clouds.rotation.y += 0.0015 * data.deltaTime;
         }
         
-        // Atualizar elementos do ecossistema
-        // Implementação simplificada
+        // Atualizar a posição da luz
+        this.lightAngle += 0.0005 * data.deltaTime;
+        this.sunLights.forEach(light => {
+            const distance = 15;
+            light.position.x = Math.cos(this.lightAngle) * distance;
+            light.position.z = Math.sin(this.lightAngle) * distance;
+        });
+
+        // Atualizar elementos do ecossistema com base no estado da simulação
+        if (simState && simState.ecosystemElements) {
+            simState.ecosystemElements.forEach(simElement => {
+                const renderElement = this.ecosystemElements[simElement.id];
+                if (renderElement) {
+                    // Atualizar posição
+                    const newPosition = this.positionOnPlanet(simElement.position);
+                    renderElement.mesh.position.lerp(newPosition, 0.1); // Interpolação suave
+
+                    // Atualizar orientação
+                    const normal = newPosition.clone().normalize();
+                    renderElement.mesh.lookAt(normal.multiplyScalar(this.planetRadius + 5));
+
+                    // Atualizar escala (para plantas)
+                    if (simElement.type === 'plant' && simElement.properties.size) {
+                        const scale = Math.max(0.1, simElement.properties.size);
+                        renderElement.mesh.scale.set(scale, scale, scale);
+                    }
+
+                    // Atualizar cor com base na energia
+                    if (simElement.type === 'herbivore' || simElement.type === 'carnivore') {
+                        const energyRatio = simElement.properties.energy / simElement.properties.maxEnergy;
+                        const originalColor = simElement.type === 'herbivore' ? new THREE.Color(0x0088ff) : new THREE.Color(0xff0000);
+                        renderElement.mesh.material.color.lerpColors(new THREE.Color(0x555555), originalColor, energyRatio);
+                    }
+                }
+            });
+        }
     }
     
     /**

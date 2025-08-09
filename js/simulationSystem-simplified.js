@@ -26,6 +26,9 @@ class SimulationSystem {
         
         // Elementos do ecossistema
         this.ecosystemElements = [];
+
+        // Referência à criatura do jogador
+        this.playerCreature = null;
         
         // Referência ao loop de animação
         this.animationFrameId = null;
@@ -64,6 +67,9 @@ class SimulationSystem {
         
         // Eventos de carregamento de estado
         eventSystem.subscribe(eventSystem.EVENTS.STATE_LOADED, this.loadState.bind(this));
+
+        // Eventos de movimento do jogador
+        eventSystem.subscribe(eventSystem.EVENTS.PLAYER_MOVE, this.movePlayer.bind(this));
     }
     
     /**
@@ -211,15 +217,38 @@ class SimulationSystem {
      */
     addElement(data) {
         if (!data || !data.element) return;
+
+        const isPlayer = data.element.isPlayer || false;
         
-        // Adicionar elemento ao ecossistema
-        this.ecosystemElements.push({
+        const newElement = {
             id: Date.now() + Math.random().toString(36).substr(2, 9),
             type: data.element.type,
             position: data.element.position || { x: 0, y: 0, z: 0 },
             properties: data.element.properties || {},
-            createdAt: this.elapsedTime
-        });
+            createdAt: this.elapsedTime,
+            isPlayer: isPlayer
+        };
+
+        // Adicionar propriedades iniciais com base no tipo
+        switch (newElement.type) {
+            case 'herbivore':
+            case 'carnivore':
+                newElement.properties.energy = 100; // Energia inicial
+                newElement.properties.maxEnergy = 100;
+                newElement.properties.energyConsumption = 2; // Energia gasta por segundo
+                newElement.properties.isHungry = false;
+                break;
+            case 'plant':
+                newElement.properties.size = 1.0;
+                newElement.properties.growthRate = 0.05;
+                break;
+        }
+
+        this.ecosystemElements.push(newElement);
+
+        if (isPlayer) {
+            this.playerCreature = newElement;
+        }
         
         // Publicar evento de elemento adicionado
         eventSystem.publish(eventSystem.EVENTS.ELEMENT_ADDED_COMPLETE, {
@@ -286,11 +315,27 @@ class SimulationSystem {
         eventSystem.publish(eventSystem.EVENTS.SIMULATION_UPDATED, {
             deltaTime: deltaTime * this.simulationSpeed,
             elapsedTime: this.elapsedTime,
-            frameCount: this.frameCount
+            frameCount: this.frameCount,
+            simulationState: this.getCurrentState() // Enviar estado atual
         });
         
         // Continuar loop de simulação
         this.animationFrameId = requestAnimationFrame(this.update.bind(this));
+    }
+
+    /**
+     * Move a criatura do jogador
+     * @param {Object} data - Dados do evento de movimento
+     */
+    movePlayer(data) {
+        if (!this.playerCreature || !data || !data.direction) return;
+
+        const moveSpeed = 0.1;
+        const { x, y, z } = data.direction;
+
+        this.playerCreature.position.x += x * moveSpeed;
+        this.playerCreature.position.y += y * moveSpeed;
+        this.playerCreature.position.z += z * moveSpeed;
     }
     
     /**
@@ -298,39 +343,71 @@ class SimulationSystem {
      * @param {number} deltaTime - Tempo decorrido desde o último quadro
      */
     updateEcosystemElements(deltaTime) {
-        // Implementação simplificada da atualização dos elementos
-        for (let i = 0; i < this.ecosystemElements.length; i++) {
+        // Itera de trás para frente para permitir a remoção segura de elementos
+        for (let i = this.ecosystemElements.length - 1; i >= 0; i--) {
             const element = this.ecosystemElements[i];
-            
-            // Atualizar posição (exemplo simplificado)
-            if (element.position) {
-                // Movimento aleatório simples
-                element.position.x += (Math.random() - 0.5) * deltaTime * 0.1;
-                element.position.y += (Math.random() - 0.5) * deltaTime * 0.1;
-                element.position.z += (Math.random() - 0.5) * deltaTime * 0.1;
-            }
             
             // Atualizar propriedades específicas do tipo de elemento
             switch (element.type) {
                 case 'plant':
-                    // Crescimento de plantas
-                    if (!element.properties.size) element.properties.size = 1.0;
-                    element.properties.size += deltaTime * 0.05;
+                    this.updatePlant(element, deltaTime);
                     break;
-                    
                 case 'herbivore':
-                    // Movimento de herbívoros
-                    // Implementação simplificada
+                    this.updateCreature(element, deltaTime, 'plant');
                     break;
-                    
                 case 'carnivore':
-                    // Movimento de carnívoros
-                    // Implementação simplificada
+                    this.updateCreature(element, deltaTime, 'herbivore');
                     break;
-                    
-                default:
-                    // Outros tipos de elementos
-                    break;
+            }
+
+            // Remover elementos que morreram
+            if (element.properties.energy <= 0) {
+                this.ecosystemElements.splice(i, 1);
+                eventSystem.publish(eventSystem.EVENTS.ELEMENT_REMOVED, { id: element.id });
+            }
+        }
+    }
+
+    updatePlant(plant, deltaTime) {
+        // Crescimento de plantas
+        if (!plant.properties.size) plant.properties.size = 1.0;
+        plant.properties.size += (plant.properties.growthRate || 0.05) * deltaTime;
+    }
+
+    updateCreature(creature, deltaTime, foodSourceType) {
+        // Consumir energia
+        creature.properties.energy -= (creature.properties.energyConsumption || 2) * deltaTime;
+        creature.properties.isHungry = creature.properties.energy < 50; // Considera faminto com menos de 50% de energia
+
+        if (creature.isPlayer) {
+            // A lógica de movimento do jogador será controlada por eventos de teclado
+            return;
+        }
+
+        if (creature.properties.isHungry) {
+            const nearestFood = this.findNearestElement(creature, foodSourceType);
+            if (nearestFood) {
+                // Mover em direção à comida
+                const direction = {
+                    x: nearestFood.position.x - creature.position.x,
+                    y: nearestFood.position.y - creature.position.y,
+                    z: nearestFood.position.z - creature.position.z,
+                };
+                const distance = Math.sqrt(direction.x ** 2 + direction.y ** 2 + direction.z ** 2);
+                const moveSpeed = 0.2;
+
+                if (distance > 0.1) { // Distância para parar de se mover
+                    creature.position.x += (direction.x / distance) * moveSpeed * deltaTime;
+                    creature.position.y += (direction.y / distance) * moveSpeed * deltaTime;
+                    creature.position.z += (direction.z / distance) * moveSpeed * deltaTime;
+                }
+            }
+        } else {
+            // Movimento aleatório simples quando não está com fome
+            if (creature.position) {
+                creature.position.x += (Math.random() - 0.5) * deltaTime * 0.1;
+                creature.position.y += (Math.random() - 0.5) * deltaTime * 0.1;
+                creature.position.z += (Math.random() - 0.5) * deltaTime * 0.1;
             }
         }
     }
@@ -339,10 +416,69 @@ class SimulationSystem {
      * Verifica interações entre elementos do ecossistema
      */
     checkElementInteractions() {
-        // Implementação simplificada das interações entre elementos
-        // Exemplo: verificar proximidade entre elementos para interações
-        
-        // Esta é uma implementação básica que pode ser expandida conforme necessário
+        const creatures = this.ecosystemElements.filter(e => e.type === 'herbivore' || e.type === 'carnivore');
+        const plants = this.ecosystemElements.filter(e => e.type === 'plant');
+        const herbivores = this.ecosystemElements.filter(e => e.type === 'herbivore');
+
+        for (const creature of creatures) {
+            if (!creature.properties.isHungry) continue;
+
+            const foodSourceType = creature.type === 'herbivore' ? 'plant' : 'herbivore';
+            const foodSources = creature.type === 'herbivore' ? plants : herbivores;
+
+            for (let i = foodSources.length - 1; i >= 0; i--) {
+                const food = foodSources[i];
+                if (food.id === creature.id) continue; // Não pode comer a si mesmo
+
+                const distance = this.calculateDistance(creature.position, food.position);
+                
+                if (distance < 0.2) { // Distância para "comer"
+                    creature.properties.energy = Math.min(creature.properties.maxEnergy, creature.properties.energy + 50);
+                    
+                    if (foodSourceType === 'plant') {
+                        food.properties.size -= 0.5;
+                        if (food.properties.size <= 0) {
+                            this.removeElementById(food.id);
+                        }
+                    } else {
+                        this.removeElementById(food.id);
+                    }
+                    break; // Para de procurar comida depois de comer
+                }
+            }
+        }
+    }
+
+    findNearestElement(sourceElement, targetType) {
+        let nearest = null;
+        let minDistance = Infinity;
+
+        for (const targetElement of this.ecosystemElements) {
+            if (targetElement.type === targetType && targetElement.id !== sourceElement.id) {
+                const distance = this.calculateDistance(sourceElement.position, targetElement.position);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearest = targetElement;
+                }
+            }
+        }
+        return nearest;
+    }
+
+    calculateDistance(pos1, pos2) {
+        if (!pos1 || !pos2) return Infinity;
+        const dx = pos1.x - pos2.x;
+        const dy = pos1.y - pos2.y;
+        const dz = pos1.z - pos2.z;
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    }
+
+    removeElementById(id) {
+        const index = this.ecosystemElements.findIndex(e => e.id === id);
+        if (index !== -1) {
+            const removedElement = this.ecosystemElements.splice(index, 1)[0];
+            eventSystem.publish(eventSystem.EVENTS.ELEMENT_REMOVED, { id: removedElement.id });
+        }
     }
     
     /**
